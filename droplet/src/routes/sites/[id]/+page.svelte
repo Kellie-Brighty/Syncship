@@ -60,6 +60,16 @@
 		if (user && id) startListening(id);
 	});
 
+	// Auto-expand the currently building deployment row
+	$effect(() => {
+		const activeDeploy = deployments.find(
+			(d) => d.status === 'building' || d.status === 'queued'
+		);
+		if (activeDeploy) {
+			expandedDeployId = activeDeploy.id;
+		}
+	});
+
 	// Auto-scroll the terminal logs to the bottom as new logs stream in
 	$effect(() => {
 		if (deployments.length > 0 && deployments[0].buildLog && logContainer) {
