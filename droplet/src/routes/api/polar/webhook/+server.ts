@@ -1,110 +1,84 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { Webhook } from 'svix';
 import { adminDb } from '$lib/server/firebase-admin';
 
 // ── Polar webhook handler ────────────────────────────────────────
-// Polar sends events when a purchase or subscription is created.
-// We verify the webhook secret, find the user by email, and set
-// their `plan` field in Firestore to 'lifetime' or 'pro'.
+// Polar uses the Standard Webhooks (Svix) spec for delivery.
+// Verification uses svix headers: webhook-id, webhook-timestamp, webhook-signature.
 //
-// Required env vars:
-//   POLAR_WEBHOOK_SECRET  — from Polar Dashboard → Settings → Webhooks
+// Required env var:
+//   POLAR_WEBHOOK_SECRET  — shown in Polar Dashboard → Settings → Webhooks
 
 const POLAR_WEBHOOK_SECRET = process.env.POLAR_WEBHOOK_SECRET ?? '';
-
-async function verifyPolarSignature(req: Request, rawBody: string): Promise<boolean> {
-	const signature = req.headers.get('webhook-signature') ?? '';
-	if (!signature || !POLAR_WEBHOOK_SECRET) return false;
-
-	// Polar uses HMAC-SHA256: "sha256=<hex>"
-	const [algo, receivedHex] = signature.split('=');
-	if (algo !== 'sha256') return false;
-
-	const encoder = new TextEncoder();
-	const key = await crypto.subtle.importKey(
-		'raw',
-		encoder.encode(POLAR_WEBHOOK_SECRET),
-		{ name: 'HMAC', hash: 'SHA-256' },
-		false,
-		['sign']
-	);
-	const mac = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));
-	const expectedHex = Array.from(new Uint8Array(mac))
-		.map((b) => b.toString(16).padStart(2, '0'))
-		.join('');
-
-	return expectedHex === receivedHex;
-}
 
 export const POST: RequestHandler = async ({ request }) => {
 	const rawBody = await request.text();
 
-	// Verify signature
-	const valid = await verifyPolarSignature(request, rawBody);
-	if (!valid) {
-		console.error('[Polar Webhook] Invalid signature');
-		return json({ error: 'Invalid signature' }, { status: 401 });
-	}
-
+	// Verify using Svix (Standard Webhooks)
+	const wh = new Webhook(POLAR_WEBHOOK_SECRET);
 	let event: Record<string, unknown>;
+
 	try {
-		event = JSON.parse(rawBody);
-	} catch {
-		return json({ error: 'Invalid JSON' }, { status: 400 });
+		event = wh.verify(rawBody, {
+			'webhook-id': request.headers.get('webhook-id') ?? '',
+			'webhook-timestamp': request.headers.get('webhook-timestamp') ?? '',
+			'webhook-signature': request.headers.get('webhook-signature') ?? ''
+		}) as Record<string, unknown>;
+	} catch (err) {
+		console.error('[Polar Webhook] Signature verification failed:', err);
+		return json({ error: 'Invalid signature' }, { status: 401 });
 	}
 
 	const eventType = event.type as string;
 	console.log(`[Polar Webhook] Received: ${eventType}`);
 
-	// Handle one-time purchase (lifetime deal)
+	// ── One-time purchase → Lifetime plan ───────────────────────
 	if (eventType === 'order.created') {
 		const order = event.data as Record<string, unknown>;
 		const customer = order.customer as Record<string, unknown>;
-		const email = customer?.email as string;
+		const email = (customer?.email as string)?.toLowerCase();
 
-		if (!email) {
-			return json({ error: 'No email in order' }, { status: 400 });
-		}
+		if (!email) return json({ error: 'No email in order' }, { status: 400 });
 
 		await setPlanByEmail(email, 'lifetime');
-		console.log(`[Polar Webhook] Set plan=lifetime for ${email}`);
+		console.log(`[Polar] ✅ Set plan=lifetime for ${email}`);
 	}
 
-	// Handle recurring subscription (pro monthly — future use)
+	// ── Subscription events → Pro plan ───────────────────────────
 	if (eventType === 'subscription.created' || eventType === 'subscription.updated') {
 		const sub = event.data as Record<string, unknown>;
 		const customer = sub.customer as Record<string, unknown>;
-		const email = customer?.email as string;
-		const status = sub.status as string; // 'active' | 'canceled' | etc.
+		const email = (customer?.email as string)?.toLowerCase();
+		const status = sub.status as string; // 'active' | 'canceled' | 'past_due' etc.
 
-		if (!email) {
-			return json({ error: 'No email in subscription' }, { status: 400 });
-		}
+		if (!email) return json({ error: 'No email in subscription' }, { status: 400 });
 
 		const plan = status === 'active' ? 'pro' : 'free';
 		await setPlanByEmail(email, plan);
-		console.log(`[Polar Webhook] Set plan=${plan} for ${email} (subscription status: ${status})`);
+		console.log(`[Polar] ✅ Set plan=${plan} for ${email} (subscription: ${status})`);
 	}
 
 	return json({ received: true });
 };
 
-// ── Helper: find Firebase user by email → update Firestore plan ──
+// ── Find Firebase user by email → update Firestore plan ──────────
 async function setPlanByEmail(email: string, plan: 'lifetime' | 'pro' | 'free') {
 	const usersRef = adminDb.collection('users');
 	const snap = await usersRef.where('email', '==', email).limit(1).get();
 
 	if (snap.empty) {
-		// User hasn't signed up yet — store a pending plan record
-		// so when they register with this email it gets applied
+		// Buyer hasn't registered yet — store pending plan, applied at signup
 		await adminDb.collection('pending_plans').doc(email).set({
 			plan,
 			setAt: new Date().toISOString()
 		});
-		console.log(`[Polar Webhook] No user found for ${email} — stored pending plan`);
+		console.log(`[Polar] No user found for ${email} — stored as pending plan`);
 		return;
 	}
 
-	const userDoc = snap.docs[0];
-	await userDoc.ref.update({ plan, planSetAt: new Date().toISOString() });
+	await snap.docs[0].ref.update({
+		plan,
+		planSetAt: new Date().toISOString()
+	});
 }
