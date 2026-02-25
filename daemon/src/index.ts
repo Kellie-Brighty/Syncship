@@ -36,7 +36,7 @@ function sendHeartbeat() {
 }
 
 sendHeartbeat();
-setInterval(sendHeartbeat, 5000);
+setInterval(sendHeartbeat, 30000); // 30s interval = ~5,760 writes/day (safe for Firebase 20k free tier)
 
 // Listen for queued deployments and process them
 function startDeploymentListener() {
@@ -96,6 +96,8 @@ function startDeploymentListener() {
             }
           });
 
+          let lastLogUpdate = 0;
+
           const result = await deploySite({
             id: data.siteId,
             name: site.name,
@@ -108,9 +110,14 @@ function startDeploymentListener() {
             envVars: site.envVars,
             abortSignal: abortController.signal,
             onLog: async (line, fullLog) => {
-              // Stream logs live to Firestore (unless already canceled)
-              if (!abortController.signal.aborted) {
-                await doc.ref.update({ buildLog: fullLog });
+              // Throttle logs: max 1 write per second to prevent Firestore quota exhaustion
+              if (abortController.signal.aborted) return;
+              
+              const now = Date.now();
+              if (now - lastLogUpdate > 1000) {
+                lastLogUpdate = now;
+                // Fire and forget; the final log is guaranteed to be saved at the end
+                doc.ref.update({ buildLog: fullLog }).catch(() => {});
               }
             }
           });
