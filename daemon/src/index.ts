@@ -75,7 +75,13 @@ function startDeploymentListener() {
             buildCommand: site.buildCommand || '',
             outputDir: site.outputDir || '.',
             githubToken,
-            envVars: site.envVars
+            envVars: site.envVars,
+            onLog: async (line, fullLog) => {
+              // Stream logs live to Firestore
+              await doc.ref.update({
+                buildLog: fullLog
+              });
+            }
           });
 
           // Update deployment status

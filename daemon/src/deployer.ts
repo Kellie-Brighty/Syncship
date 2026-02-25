@@ -18,6 +18,7 @@ interface SiteConfig {
   outputDir: string;
   githubToken?: string;
   envVars?: string;
+  onLog?: (logLine: string, fullLog: string) => Promise<void> | void;
 }
 
 /**
@@ -27,9 +28,45 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
   const startTime = Date.now();
   const logs: string[] = [];
 
-  function log(msg: string) {
+  async function log(msg: string) {
     console.log(`  [${site.name}] ${msg}`);
     logs.push(msg);
+    if (site.onLog) {
+      try { await site.onLog(msg, logs.join('\n')); } catch (e) { /* ignore */ }
+    }
+  }
+
+  // Helper to execute commands and stream their output live
+  async function execStream(command: string, options: { timeout?: number } = {}) {
+    return new Promise<void>((resolve, reject) => {
+      let timeoutId: NodeJS.Timeout;
+      const child = exec(command, (error) => {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (error) reject(error);
+        else resolve();
+      });
+
+      if (options.timeout) {
+        timeoutId = setTimeout(() => {
+          child.kill('SIGKILL');
+          reject(new Error(`Command timed out after ${options.timeout}ms`));
+        }, options.timeout);
+      }
+
+      if (child.stdout) {
+        child.stdout.on('data', (data) => {
+          const lines = data.toString().trim().split('\n');
+          lines.forEach((l: string) => l && log(`    ${l}`));
+        });
+      }
+      
+      if (child.stderr) {
+        child.stderr.on('data', (data) => {
+          const lines = data.toString().trim().split('\n');
+          lines.forEach((l: string) => l && log(`    ${l}`));
+        });
+      }
+    });
   }
 
   try {
@@ -54,73 +91,77 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
     }
 
     if (existsSync(repoDir)) {
-      log('Pulling latest changes...');
+      await log('Pulling latest changes...');
       // Note: If the token changes, pull might fail if the remote URL wasn't updated. For MVP we just pull.
-      await execAsync(`cd ${repoDir} && git remote set-url origin ${cloneUrl}.git && git fetch origin && git reset --hard origin/${site.branch}`, { timeout: 60000 });
+      await execStream(`cd ${repoDir} && git remote set-url origin ${cloneUrl}.git && git fetch origin && git reset --hard origin/${site.branch}`, { timeout: 60000 });
     } else {
-      log(`Cloning ${site.repo}...`);
-      await execAsync(`git clone --branch ${site.branch} --single-branch ${cloneUrl}.git ${repoDir}`, { timeout: 120000 });
+      await log(`Cloning ${site.repo}...`);
+      await execStream(`git clone --colors --branch ${site.branch} --single-branch ${cloneUrl}.git ${repoDir}`, { timeout: 120000 });
     }
-    log('Repository ready');
+    await log('Repository ready');
 
     // 2.5 Inject Environment Variables if they exist
     if (site.envVars) {
-      log('Injecting stored .env variables...');
+      await log('Injecting stored .env variables...');
       writeFileSync(resolve(repoDir, '.env'), site.envVars);
     }
 
     // 3. Build if needed (framework projects)
     if (site.buildCommand) {
-      log(`Installing dependencies...`);
-      const hasYarnLock = existsSync(resolve(repoDir, 'yarn.lock'));
-      const hasPnpmLock = existsSync(resolve(repoDir, 'pnpm-lock.yaml'));
-      const installCmd = hasPnpmLock ? 'pnpm install' : hasYarnLock ? 'yarn install' : 'npm install';
-      await execAsync(`cd ${repoDir} && ${installCmd}`, { timeout: 300000 });
+      if (existsSync(resolve(repoDir, 'package.json'))) {
+        await log(`Installing dependencies...`);
+        const hasYarnLock = existsSync(resolve(repoDir, 'yarn.lock'));
+        const hasPnpmLock = existsSync(resolve(repoDir, 'pnpm-lock.yaml'));
+        const installCmd = hasPnpmLock ? 'pnpm install' : hasYarnLock ? 'yarn install' : 'npm install';
+        await execStream(`cd ${repoDir} && ${installCmd}`, { timeout: 300000 });
+      } else {
+        await log(`No package.json found in root. Skipping auto-install (assuming build command handles it)...`);
+      }
 
-      log(`Running build: ${site.buildCommand}`);
-      await execAsync(`cd ${repoDir} && ${site.buildCommand}`, { timeout: 300000 });
-      log('Build complete');
+      await log(`Running build: ${site.buildCommand}`);
+      await execStream(`cd ${repoDir} && ${site.buildCommand}`, { timeout: 300000 });
+      await log('Build complete');
     }
 
     // 4. Copy output to web root
     const sourceDir = resolve(repoDir, site.outputDir || '.');
     mkdirSync(siteDir, { recursive: true });
-    await execAsync(`rsync -a --delete ${sourceDir}/ ${siteDir}/`);
-    log(`Files deployed to ${siteDir}`);
+    await execStream(`rsync -a --delete ${sourceDir}/ ${siteDir}/`);
+    await log(`Files deployed to ${siteDir}`);
 
     // 5. Generate Nginx config
-    log('Configuring Nginx...');
+    await log('Configuring Nginx...');
     const nginxConfig = generateNginxConfig(cleanDomain, siteDir);
     writeFileSync(`/etc/nginx/sites-available/${cleanDomain}`, nginxConfig);
 
     // Enable site (symlink)
     const enabledPath = `/etc/nginx/sites-enabled/${cleanDomain}`;
     if (!existsSync(enabledPath)) {
-      await execAsync(`ln -sf /etc/nginx/sites-available/${cleanDomain} ${enabledPath}`);
+      await execStream(`ln -sf /etc/nginx/sites-available/${cleanDomain} ${enabledPath}`);
     }
 
     // Test and reload Nginx
-    await execAsync('nginx -t');
-    await execAsync('systemctl reload nginx');
-    log('Nginx configured and reloaded');
+    await execStream('nginx -t');
+    await execStream('systemctl reload nginx');
+    await log('Nginx configured and reloaded');
 
     // 6. SSL certificate (Certbot)
-    log('Setting up SSL...');
+    await log('Setting up SSL...');
     try {
-      await execAsync(`certbot --nginx -d ${cleanDomain} --non-interactive --agree-tos --email admin@${cleanDomain} --redirect`, { timeout: 120000 });
-      log('SSL certificate installed');
+      await execStream(`certbot --nginx -d ${cleanDomain} --non-interactive --agree-tos --email admin@${cleanDomain} --redirect`, { timeout: 120000 });
+      await log('SSL certificate installed');
     } catch (sslErr: any) {
-      log(`SSL warning: ${sslErr.message} (site will still work on HTTP)`);
+      await log(`SSL warning: ${sslErr.message} (site will still work on HTTP)`);
     }
 
     const duration = formatDuration(Date.now() - startTime);
-    log(`✅ Deployed successfully in ${duration}`);
+    await log(`✅ Deployed successfully in ${duration}`);
 
     return { success: true, duration, log: logs.join('\n') };
 
   } catch (err: any) {
     const duration = formatDuration(Date.now() - startTime);
-    log(`❌ Deploy failed: ${err.message}`);
+    await log(`❌ Deploy failed: ${err.message}`);
     return { success: false, duration, log: logs.join('\n') };
   }
 }

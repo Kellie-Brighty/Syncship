@@ -1,1 +1,4 @@
 daemon/service-account.json
+.env
+.env.*
+droplet/.env*

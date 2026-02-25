@@ -443,11 +443,17 @@
 										</div>
 									{/if}
 									{#if deploy.buildLog}
-										<div class="rounded-md bg-gray-900 p-3 overflow-x-auto">
+										<div class="rounded-md bg-gray-900 p-3 overflow-x-auto relative min-h-[100px]">
 											<pre class="text-xs font-mono text-gray-300 whitespace-pre-wrap">{deploy.buildLog}</pre>
+											{#if deploy.status === 'building' || deploy.status === 'queued'}
+												<div class="mt-2 flex items-center gap-2 text-xs text-yellow-500 font-mono">
+													<Loader class="h-3 w-3 animate-spin" />
+													<span>Streaming logs...</span>
+												</div>
+											{/if}
 										</div>
 									{:else if deploy.status === 'building' || deploy.status === 'queued'}
-										<div class="flex items-center gap-2 text-sm text-gray-500">
+										<div class="flex items-center gap-2 text-sm text-gray-500 p-3">
 											<Loader class="h-3.5 w-3.5 animate-spin" />
 											Waiting for build output...
 										</div>
