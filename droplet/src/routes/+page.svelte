@@ -128,7 +128,16 @@
 				</div>
 				<div class="flex-1">
 					<div class="flex items-center justify-between">
-						<p class="text-sm text-gray-500">Server Load</p>
+						<div class="flex items-center gap-1.5">
+							<p class="text-sm text-gray-500">Server Load</p>
+							<div class="group relative flex items-center justify-center">
+								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400 hover:text-gray-600 cursor-help transition-colors"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+								<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 rounded bg-gray-900 px-2 py-1.5 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center">
+									Real-time RAM usage of your Ubuntu droplet
+									<div class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900 px-1 py-1"></div>
+								</div>
+							</div>
+						</div>
 						{#if stats}
 							<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
 								{stats.ramUsage < 70
@@ -140,8 +149,8 @@
 							</span>
 						{/if}
 					</div>
-					<p class="text-xl font-bold text-gray-900">
-						{stats?.ramUsage ?? 0}<span class="text-sm font-normal text-gray-400 ml-0.5">% RAM</span>
+					<p class="text-xl font-bold text-gray-900 tracking-tight">
+						{stats ? Math.round(stats.ramUsage) : 0}<span class="text-sm font-medium text-gray-400 ml-0.5">% RAM</span>
 					</p>
 				</div>
 			</div>
