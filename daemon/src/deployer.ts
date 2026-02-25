@@ -24,7 +24,7 @@ interface SiteConfig {
 /**
  * Deploy a site: clone/pull repo, build if needed, set up Nginx + SSL
  */
-export async function deploySite(site: SiteConfig): Promise<{ success: boolean; duration: string; log: string }> {
+export async function deploySite(site: SiteConfig): Promise<{ success: boolean; duration: string; log: string; commitMessage: string }> {
   const startTime = Date.now();
   const logs: string[] = [];
 
@@ -98,6 +98,15 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
       await log(`Cloning ${site.repo}...`);
       await execStream(`git clone --colors --branch ${site.branch} --single-branch ${cloneUrl}.git ${repoDir}`, { timeout: 120000 });
     }
+
+    // Read the latest commit message to use as deployment title
+    let commitMessage = 'Manual deployment';
+    try {
+      const { stdout } = await execAsync(`cd ${repoDir} && git log -1 --pretty=%s`);
+      const msg = stdout.trim();
+      if (msg) commitMessage = msg;
+    } catch { /* fallback to default */ }
+
     await log('Repository ready');
 
     // 2.5 Inject Environment Variables if they exist
@@ -157,12 +166,12 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
     const duration = formatDuration(Date.now() - startTime);
     await log(`✅ Deployed successfully in ${duration}`);
 
-    return { success: true, duration, log: logs.join('\n') };
+    return { success: true, duration, log: logs.join('\n'), commitMessage };
 
   } catch (err: any) {
     const duration = formatDuration(Date.now() - startTime);
     await log(`❌ Deploy failed: ${err.message}`);
-    return { success: false, duration, log: logs.join('\n') };
+    return { success: false, duration, log: logs.join('\n'), commitMessage: 'Manual deployment' };
   }
 }
 

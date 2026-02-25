@@ -104,11 +104,12 @@ function startDeploymentListener() {
             }
           });
 
-          // Update deployment status
+          // Update deployment status + title from commit message
           await doc.ref.update({
             status: result.success ? 'success' : 'failed',
             duration: result.duration,
             buildLog: result.log,
+            message: result.commitMessage,
             completedAt: FieldValue.serverTimestamp()
           });
 
