@@ -18,7 +18,7 @@
 		try {
 			await signOut();
 			open = false;
-			goto('/auth/login');
+			goto('/');
 		} catch (err) {
 			console.error('Logout failed:', err);
 		} finally {
