@@ -17,6 +17,7 @@
 	import { doc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 	import { db } from '$lib/firebase/client';
 	import { onDestroy } from 'svelte';
+	import confetti from 'canvas-confetti';
 
 	let site = $state<Site | null>(null);
 	let deployments = $state<Deployment[]>([]);
@@ -54,6 +55,37 @@
 	let unsubSite: (() => void) | null = null;
 	let unsubDeploys: (() => void) | null = null;
 
+	// Toast & celebration state
+	let showSuccessToast = $state(false);
+	let prevDeployStatuses = new Map<string, string>();
+
+	function celebrateDeployment() {
+		showSuccessToast = true;
+		const duration = 3000;
+		const end = Date.now() + duration;
+		const colors = ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ef4444', '#ffffff'];
+		(function frame() {
+			confetti({
+				particleCount: 6,
+				angle: 60,
+				spread: 55,
+				origin: { x: 0 },
+				colors,
+				shapes: ['square', 'circle']
+			});
+			confetti({
+				particleCount: 6,
+				angle: 120,
+				spread: 55,
+				origin: { x: 1 },
+				colors,
+				shapes: ['square', 'circle']
+			});
+			if (Date.now() < end) requestAnimationFrame(frame);
+		})();
+		setTimeout(() => { showSuccessToast = false; }, 4000);
+	}
+
 	$effect(() => {
 		const user = $currentUser;
 		const id = $page.params.id;
@@ -67,6 +99,17 @@
 		);
 		if (activeDeploy) {
 			expandedDeployId = activeDeploy.id;
+		}
+	});
+
+	// Detect building → success transition and celebrate!
+	$effect(() => {
+		for (const deploy of deployments) {
+			const prev = prevDeployStatuses.get(deploy.id);
+			if (prev === 'building' && deploy.status === 'success') {
+				celebrateDeployment();
+			}
+			prevDeployStatuses.set(deploy.id, deploy.status);
 		}
 	});
 
@@ -769,3 +812,27 @@
 		</Card>
 	{/if}
 {/if}
+
+{#if showSuccessToast}
+	<div class="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-gray-900 border border-green-500/40 px-5 py-4 shadow-2xl shadow-green-500/10 toast-enter">
+		<div class="flex h-9 w-9 items-center justify-center rounded-full bg-green-500/20 ring-1 ring-green-500/40">
+			<svg class="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+			</svg>
+		</div>
+		<div>
+			<p class="text-sm font-semibold text-white">Deployment Successful! 🎉</p>
+			<p class="text-xs text-gray-400 mt-0.5">Your site is live and up to date.</p>
+		</div>
+	</div>
+{/if}
+
+<style>
+	.toast-enter {
+		animation: toast-slide-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+	}
+	@keyframes toast-slide-in {
+		from { opacity: 0; transform: translateY(1rem) scale(0.95); }
+		to   { opacity: 1; transform: translateY(0) scale(1); }
+	}
+</style>
