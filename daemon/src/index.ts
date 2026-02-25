@@ -2,7 +2,7 @@ import { db } from './firebase.js';
 import { deploySite } from './deployer.js';
 import { FieldValue } from 'firebase-admin/firestore';
 import os from 'os';
-import osutils from 'os-utils';
+import * as osutils from 'os-utils';
 
 console.log('🚀 AgencyDroplet Daemon starting...');
 
