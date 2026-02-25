@@ -108,7 +108,7 @@
 </section>
 
 <!-- ─── STATS BAR ──────────────────────────────────────────────── -->
-<section class="border-y border-gray-200 bg-white py-10">
+<section class="border-y border-gray-200/60 py-10">
 	<div class="mx-auto max-w-5xl px-6">
 		<div class="grid grid-cols-3 divide-x divide-gray-200">
 			{#each [['50+', 'Sites Deployed'], ['99.9%', 'Uptime'], ['< 60s', 'Avg Deploy Time']] as [val, label]}
@@ -122,7 +122,7 @@
 </section>
 
 <!-- ─── FEATURES ──────────────────────────────────────────────── -->
-<section id="features" class="bg-gray-50 py-28">
+<section id="features" class="py-28">
 	<div class="mx-auto max-w-7xl px-6 lg:px-8">
 		<div class="text-center mb-16 reveal fade-up">
 			<p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Features</p>
@@ -155,7 +155,7 @@
 </section>
 
 <!-- ─── HOW IT WORKS ──────────────────────────────────────────── -->
-<section id="how-it-works" class="bg-white py-28 border-y border-gray-100">
+<section id="how-it-works" class="py-28 border-y border-gray-100/70">
 	<div class="mx-auto max-w-4xl px-6 text-center">
 		<div class="reveal fade-up mb-16">
 			<p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">How It Works</p>
@@ -183,7 +183,7 @@
 </section>
 
 <!-- ─── PRICING ───────────────────────────────────────────────── -->
-<section id="pricing" class="bg-gray-50 py-28">
+<section id="pricing" class="py-28">
 	<div class="mx-auto max-w-5xl px-6">
 		<div class="text-center mb-16 reveal fade-up">
 			<p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Pricing</p>
@@ -241,7 +241,7 @@
 </section>
 
 <!-- ─── CTA ───────────────────────────────────────────────────── -->
-<section class="bg-white border-t border-gray-100 py-24">
+<section class="border-t border-gray-100/70 py-24">
 	<div class="mx-auto max-w-3xl px-6 text-center reveal fade-up">
 		<div class="inline-flex items-center justify-center rounded-2xl bg-gray-900 p-4 mb-6 shadow-md">
 			<Droplets class="h-8 w-8 text-white" />
@@ -255,7 +255,7 @@
 </section>
 
 <!-- ─── FOOTER ────────────────────────────────────────────────── -->
-<footer class="bg-gray-50 border-t border-gray-200 py-10">
+<footer class="border-t border-gray-200/60 py-10">
 	<div class="mx-auto max-w-7xl px-6">
 		<div class="flex flex-col md:flex-row items-center justify-between gap-5">
 			<a href="/" class="flex items-center gap-x-2.5">

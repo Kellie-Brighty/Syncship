@@ -32,7 +32,7 @@
 </script>
 
 <div class="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
-	<div class="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-5 pb-4">
+	<div class="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200/70 bg-white/85 backdrop-blur-sm px-5 pb-4">
 		<!-- Logo -->
 		<div class="flex h-14 shrink-0 items-center gap-x-2.5">
 			<div class="rounded-lg bg-gray-900 p-1.5">
