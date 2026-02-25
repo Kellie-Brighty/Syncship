@@ -5,7 +5,7 @@
 	import LogoutModal from './LogoutModal.svelte';
 
 	const navigation = [
-		{ name: 'Dashboard', href: '/', icon: LayoutDashboard },
+		{ name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
 		{ name: 'Sites', href: '/sites', icon: Globe },
 		{ name: 'Deployments', href: '/deployments', icon: CodeSquare },
 		{ name: 'Settings', href: '/settings', icon: Settings }

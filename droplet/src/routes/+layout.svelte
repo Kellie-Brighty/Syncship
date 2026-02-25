@@ -8,18 +8,25 @@
 
 	let { children }: { children: Snippet } = $props();
 
+	const PUBLIC_ROUTES = ['/', '/auth'];
+
 	$effect(() => {
 		const user = $currentUser;
 		const isLoading = $authLoading;
-		const currentPath = $page.url.pathname;
+		const path = $page.url.pathname;
+		const isPublic = PUBLIC_ROUTES.some(r => path === r || path.startsWith('/auth'));
 
-		if (!isLoading && !user && !currentPath.startsWith('/auth')) {
-			goto('/auth/login');
+		if (!isLoading) {
+			if (!user && !isPublic) {
+				goto('/auth/login');
+			} else if (user && path === '/') {
+				goto('/dashboard');
+			}
 		}
 	});
 </script>
 
-{#if $page.url.pathname.startsWith('/auth')}
+{#if $page.url.pathname === '/' || $page.url.pathname.startsWith('/auth')}
 	{@render children()}
 {:else if $authLoading}
 	<div class="flex min-h-screen items-center justify-center bg-gray-100">
