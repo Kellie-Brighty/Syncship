@@ -186,18 +186,27 @@
 </header>
 
 <!-- ─── HERO ──────────────────────────────────────────────────── -->
-<section class="hero-section glass relative min-h-screen flex items-center justify-center overflow-hidden pt-32 pb-24">
-	<!-- Frosted glass texture overlay -->
-	<div class="hero-noise absolute inset-0 pointer-events-none"></div>
-	<!-- Glass shimmer bands -->
-	<div class="hero-shimmer absolute inset-0 pointer-events-none"></div>
-	<!-- Bottom fog fade -->
-	<div class="hero-fog absolute bottom-0 inset-x-0 h-40 pointer-events-none"></div>
+<section class="hero-section relative min-h-screen flex items-center justify-center overflow-hidden pt-32 pb-24">
 
-	<!-- Water drop canvas -->
-	<canvas bind:this={heroCanvas} class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+	<!-- LAYER 0: Vivid background blobs — this is what the glass blurs -->
+	<div class="absolute inset-0 z-0">
+		<div class="absolute -top-32 -left-32 w-[700px] h-[700px] rounded-full blur-[90px]" style="background: radial-gradient(circle, #b8cfe0 0%, #8fafc9 60%, transparent 100%); opacity: 0.9;"></div>
+		<div class="absolute -bottom-40 -right-32 w-[600px] h-[600px] rounded-full blur-[80px]" style="background: radial-gradient(circle, #c5d6e4 0%, #9db8ce 60%, transparent 100%); opacity: 0.85;"></div>
+		<div class="absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[400px] rounded-full blur-[70px]" style="background: radial-gradient(circle, #d4e1ea 0%, #aac0d2 60%, transparent 100%); opacity: 0.7;"></div>
+		<div class="absolute top-10 right-10 w-[300px] h-[300px] rounded-full blur-[60px]" style="background: radial-gradient(circle, #a8c2d8 0%, transparent 70%); opacity: 0.6;"></div>
+	</div>
 
-	<div class="relative z-10 mx-auto max-w-5xl px-6 text-center">
+	<!-- LAYER 1: Glass panel — blurs the blobs behind it -->
+	<div class="absolute inset-0 z-10 glass"></div>
+
+	<!-- LAYER 2: Glass surface shimmer -->
+	<div class="absolute inset-0 z-10 pointer-events-none hero-shimmer"></div>
+
+	<!-- LAYER 3: Canvas water drops — sit ON TOP of the glass -->
+	<canvas bind:this={heroCanvas} class="absolute inset-0 w-full h-full pointer-events-none z-20"></canvas>
+
+	<!-- LAYER 4: Content -->
+	<div class="relative z-30 mx-auto max-w-5xl px-6 text-center">
 
 		<h1 class="reveal fade-up delay-100 text-5xl sm:text-6xl lg:text-7xl font-black text-gray-900 tracking-tight leading-[1.05]">
 			Ship Your Clients' Sites.
