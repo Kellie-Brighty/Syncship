@@ -361,6 +361,13 @@
 	.custom-scrollbar::-webkit-scrollbar-thumb:hover {
 		background: rgba(255, 255, 255, 0.2);
 	}
+	.toast-enter {
+		animation: toast-slide-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+	}
+	@keyframes toast-slide-in {
+		from { opacity: 0; transform: translateY(1rem) scale(0.95); }
+		to   { opacity: 1; transform: translateY(0) scale(1); }
+	}
 </style>
 
 <svelte:head>
@@ -827,12 +834,3 @@
 	</div>
 {/if}
 
-<style>
-	.toast-enter {
-		animation: toast-slide-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-	}
-	@keyframes toast-slide-in {
-		from { opacity: 0; transform: translateY(1rem) scale(0.95); }
-		to   { opacity: 1; transform: translateY(0) scale(1); }
-	}
-</style>
