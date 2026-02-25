@@ -233,7 +233,7 @@
 
 		deploying = true;
 		try {
-			await createDeployment({
+			const newDeployId = await createDeployment({
 				siteId: site.id,
 				siteName: site.name,
 				commit: 'manual',
@@ -244,6 +244,10 @@
 				triggeredBy: 'dashboard',
 				ownerId: user.uid
 			});
+
+			// Immediately expand the new deployment row — don't wait for onSnapshot
+			expandedDeployId = newDeployId;
+
 			await updateSite(site.id, { status: 'building' });
 			activeTab = 'deployments';
 		} catch (err) {
