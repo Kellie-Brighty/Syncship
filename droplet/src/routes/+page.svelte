@@ -29,18 +29,31 @@
 		function drawDrop(d: CDrop) {
 			if (d.r < 0.5) return;
 			const {x,y,r,opacity} = d;
-			// frosted glass body
-			const body = ctx.createRadialGradient(x-r*0.3,y-r*0.35,r*0.02, x,y,r);
-			body.addColorStop(0, `rgba(255,255,255,${opacity*0.70})`);
-			body.addColorStop(0.5,`rgba(220,232,245,${opacity*0.18})`);
-			body.addColorStop(1,  `rgba(185,210,230,${opacity*0.30})`);
+			// Outer glow — looks like light catching on the glass
+			const glow = ctx.createRadialGradient(x,y,r*0.6, x,y,r*1.4);
+			glow.addColorStop(0, `rgba(160,200,240,${opacity*0.12})`);
+			glow.addColorStop(1, 'rgba(0,0,0,0)');
+			ctx.beginPath(); ctx.arc(x,y,r*1.4,0,Math.PI*2);
+			ctx.fillStyle = glow; ctx.fill();
+			// Glass body — dark center with bright rim
+			const body = ctx.createRadialGradient(x-r*0.25,y-r*0.3,r*0.01, x,y,r);
+			body.addColorStop(0,   `rgba(220,240,255,${opacity*0.55})`);
+			body.addColorStop(0.4, `rgba(140,180,220,${opacity*0.12})`);
+			body.addColorStop(0.8, `rgba(100,150,200,${opacity*0.08})`);
+			body.addColorStop(1,   `rgba(180,215,245,${opacity*0.30})`);
 			ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
 			ctx.fillStyle = body; ctx.fill();
-			// border
-			ctx.strokeStyle=`rgba(255,255,255,${opacity*0.55})`; ctx.lineWidth=0.7; ctx.stroke();
-			// highlight
-			ctx.beginPath(); ctx.arc(x-r*0.28,y-r*0.32,r*0.25,0,Math.PI*2);
-			ctx.fillStyle=`rgba(255,255,255,${opacity*0.70})`; ctx.fill();
+			// Bright border ring
+			ctx.strokeStyle=`rgba(255,255,255,${opacity*0.75})`; ctx.lineWidth=0.8; ctx.stroke();
+			// Main specular highlight (bright white dot)
+			const hl = ctx.createRadialGradient(x-r*0.28,y-r*0.32,0, x-r*0.28,y-r*0.32,r*0.28);
+			hl.addColorStop(0, `rgba(255,255,255,${opacity*0.95})`);
+			hl.addColorStop(1, 'rgba(255,255,255,0)');
+			ctx.beginPath(); ctx.arc(x-r*0.28,y-r*0.32,r*0.28,0,Math.PI*2);
+			ctx.fillStyle=hl; ctx.fill();
+			// Tiny secondary glint
+			ctx.beginPath(); ctx.arc(x+r*0.22,y+r*0.22,r*0.09,0,Math.PI*2);
+			ctx.fillStyle=`rgba(255,255,255,${opacity*0.45})`; ctx.fill();
 		}
 
 		// ── Water streaks ────────────────────────────────────
@@ -62,10 +75,10 @@
 
 		function drawStreak(s: Streak) {
 			const grad = ctx.createLinearGradient(s.x, s.y, s.x+s.wiggle*s.length*0.3, s.y+s.length);
-			grad.addColorStop(0, `rgba(255,255,255,0)`);
-			grad.addColorStop(0.3, `rgba(210,228,245,${s.opacity})`);
-			grad.addColorStop(0.85,`rgba(200,222,240,${s.opacity*0.8})`);
-			grad.addColorStop(1, `rgba(255,255,255,0)`);
+			grad.addColorStop(0, 'rgba(255,255,255,0)');
+			grad.addColorStop(0.25, `rgba(200,225,255,${s.opacity*1.1})`);
+			grad.addColorStop(0.75, `rgba(180,210,245,${s.opacity})`);
+			grad.addColorStop(1, 'rgba(255,255,255,0)');
 			ctx.beginPath();
 			ctx.moveTo(s.x, s.y);
 			ctx.quadraticCurveTo(s.x+s.wiggle*20, s.y+s.length*0.5, s.x+s.wiggle*10, s.y+s.length);
@@ -188,16 +201,18 @@
 <!-- ─── HERO ──────────────────────────────────────────────────── -->
 <section class="hero-section relative min-h-screen flex items-center justify-center overflow-hidden pt-32 pb-24">
 
-	<!-- LAYER 0: Vivid background blobs — this is what the glass blurs -->
-	<div class="absolute inset-0 z-0">
-		<div class="absolute -top-32 -left-32 w-[700px] h-[700px] rounded-full blur-[90px]" style="background: radial-gradient(circle, #b8cfe0 0%, #8fafc9 60%, transparent 100%); opacity: 0.9;"></div>
-		<div class="absolute -bottom-40 -right-32 w-[600px] h-[600px] rounded-full blur-[80px]" style="background: radial-gradient(circle, #c5d6e4 0%, #9db8ce 60%, transparent 100%); opacity: 0.85;"></div>
-		<div class="absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[400px] rounded-full blur-[70px]" style="background: radial-gradient(circle, #d4e1ea 0%, #aac0d2 60%, transparent 100%); opacity: 0.7;"></div>
-		<div class="absolute top-10 right-10 w-[300px] h-[300px] rounded-full blur-[60px]" style="background: radial-gradient(circle, #a8c2d8 0%, transparent 70%); opacity: 0.6;"></div>
+	<!-- LAYER 0: Dark base + vivid depth blobs -->
+	<div class="absolute inset-0 z-0" style="background: #0d1117;">
+		<div class="absolute -top-40 -left-40 w-[700px] h-[700px] rounded-full blur-[100px]" style="background: radial-gradient(circle, rgba(56,100,160,0.7) 0%, transparent 70%);"></div>
+		<div class="absolute -bottom-40 -right-40 w-[650px] h-[650px] rounded-full blur-[100px]" style="background: radial-gradient(circle, rgba(40,80,140,0.6) 0%, transparent 70%);"></div>
+		<div class="absolute top-1/3 left-1/4 w-[400px] h-[400px] rounded-full blur-[80px]" style="background: radial-gradient(circle, rgba(70,120,180,0.4) 0%, transparent 70%);"></div>
+		<div class="absolute top-1/4 right-1/4 w-[300px] h-[300px] rounded-full blur-[60px]" style="background: radial-gradient(circle, rgba(90,140,200,0.35) 0%, transparent 70%);"></div>
 	</div>
 
-	<!-- LAYER 1: Glass panel — blurs the blobs behind it -->
-	<div class="absolute inset-0 z-10 glass"></div>
+	<!-- LAYER 1: Dark glass panel -->
+	<div class="absolute inset-0 z-10" style="background: rgba(13,17,23,0.45); backdrop-filter: blur(22px) saturate(140%); -webkit-backdrop-filter: blur(22px) saturate(140%);"></div>
+	<!-- LAYER 1b: Subtle top-edge light reflection -->
+	<div class="absolute inset-x-0 top-0 h-px z-10" style="background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15) 40%, rgba(255,255,255,0.15) 60%, transparent);"></div>
 
 	<!-- LAYER 2: Glass surface shimmer -->
 	<div class="absolute inset-0 z-10 pointer-events-none hero-shimmer"></div>
@@ -208,25 +223,25 @@
 	<!-- LAYER 4: Content -->
 	<div class="relative z-30 mx-auto max-w-5xl px-6 text-center">
 
-		<h1 class="reveal fade-up delay-100 text-5xl sm:text-6xl lg:text-7xl font-black text-gray-900 tracking-tight leading-[1.05]">
+		<h1 class="reveal fade-up delay-100 text-5xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.05]">
 			Ship Your Clients' Sites.
 			<br />
 			<span class="relative inline-block mt-2">
-				<span class="relative z-10">Not Your Sanity.</span>
-				<span class="absolute inset-x-0 bottom-1 h-4 bg-gray-200/80 -rotate-1 rounded"></span>
+				<span class="relative z-10 text-white/90">Not Your Sanity.</span>
+				<span class="absolute inset-x-0 bottom-1 h-4 rounded" style="background: rgba(255,255,255,0.08); transform: rotate(-0.5deg);"></span>
 			</span>
 		</h1>
 
-		<p class="reveal fade-up delay-200 mt-7 text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed font-medium">
-			Git-push. Auto-build. Custom domain. Free SSL. All on <strong class="text-gray-900">your own Ubuntu server</strong>. No Vercel. No lock-in. No per-site fees.
+		<p class="reveal fade-up delay-200 mt-7 text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto leading-relaxed font-medium">
+			Git-push. Auto-build. Custom domain. Free SSL. All on <strong class="text-white">your own Ubuntu server</strong>. No Vercel. No lock-in. No per-site fees.
 		</p>
 
 		<div class="reveal fade-up delay-300 mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-			<a href="/auth/register" class="cta-btn w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-8 py-3.5 text-base font-bold text-white hover:bg-gray-800 transition-all shadow-md">
+			<a href="/auth/register" class="cta-btn w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-white px-8 py-3.5 text-base font-bold text-gray-900 hover:bg-gray-100 transition-all shadow-lg">
 				Start Deploying Free
 				<ChevronRight class="h-4 w-4" />
 			</a>
-			<a href="#how-it-works" onclick={smoothTo('how-it-works')} class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white/70 backdrop-blur px-8 py-3.5 text-base font-semibold text-gray-700 hover:bg-white transition-colors shadow-sm">
+			<a href="#how-it-works" onclick={smoothTo('how-it-works')} class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 px-8 py-3.5 text-base font-semibold text-white/90 hover:bg-white/10 transition-colors" style="backdrop-filter: blur(8px); background: rgba(255,255,255,0.07);">
 				See How It Works
 			</a>
 		</div>
