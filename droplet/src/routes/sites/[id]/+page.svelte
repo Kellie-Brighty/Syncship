@@ -598,17 +598,34 @@
 										</div>
 									{/if}
 									{#if deploy.buildLog}
-										<div class="rounded-md bg-gray-900 p-4 overflow-x-auto">
-											<pre class="text-xs font-mono text-gray-300 whitespace-pre-wrap">{deploy.buildLog}</pre>
-										</div>
-									{:else if deploy.status === 'building' || deploy.status === 'queued'}
-										<div class="flex items-center gap-2 text-sm text-gray-500">
-											<Loader class="h-3.5 w-3.5 animate-spin" />
-											Waiting for build output...
-										</div>
-									{:else}
-										<p class="text-sm text-gray-400">No build log available.</p>
-									{/if}
+							<div 
+								class="rounded-md bg-[#1e1e1e] p-4 overflow-x-auto overflow-y-auto relative max-h-[400px] border border-gray-800 shadow-inner custom-scrollbar"
+								bind:this={logContainer}
+							>
+								<div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-800/50 sticky top-0 bg-[#1e1e1e]/90 backdrop-blur-sm">
+									<div class="flex gap-1.5">
+										<div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+										<div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+										<div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+									</div>
+									<span class="text-[10px] font-mono text-gray-500 uppercase tracking-wider ml-2">Terminal Output</span>
+								</div>
+								<pre class="text-[13px] leading-relaxed font-mono text-gray-300 whitespace-pre-wrap font-medium">{@html parseLogColors(deploy.buildLog)}</pre>
+								{#if deploy.status === 'building' || deploy.status === 'queued'}
+									<div class="mt-4 flex items-center gap-2 text-xs text-yellow-500/90 font-mono animate-pulse bg-yellow-500/10 inline-flex px-2 py-1 rounded">
+										<Loader class="h-3 w-3 animate-spin" />
+										<span>Streaming live logs...</span>
+									</div>
+								{/if}
+							</div>
+						{:else if deploy.status === 'building' || deploy.status === 'queued'}
+							<div class="flex items-center gap-2 text-sm text-gray-500 p-3">
+								<Loader class="h-3.5 w-3.5 animate-spin" />
+								Waiting for build output...
+							</div>
+						{:else}
+							<p class="text-sm text-gray-400">No build log available.</p>
+						{/if}
 								</div>
 							{/if}
 						</div>
