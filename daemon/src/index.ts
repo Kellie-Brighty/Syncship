@@ -86,6 +86,16 @@ function startDeploymentListener() {
             }
           }
 
+          const abortController = new AbortController();
+
+          // Listen for cancellation from the UI
+          const unsubscribe = doc.ref.onSnapshot((snap) => {
+            if (snap.exists && snap.data()?.status === 'canceled') {
+              console.log(`\n🛑 Deployment ${deployId} canceled by user`);
+              abortController.abort();
+            }
+          });
+
           const result = await deploySite({
             id: data.siteId,
             name: site.name,
@@ -96,22 +106,29 @@ function startDeploymentListener() {
             outputDir: site.outputDir || '.',
             githubToken,
             envVars: site.envVars,
+            abortSignal: abortController.signal,
             onLog: async (line, fullLog) => {
-              // Stream logs live to Firestore
-              await doc.ref.update({
-                buildLog: fullLog
-              });
+              // Stream logs live to Firestore (unless already canceled)
+              if (!abortController.signal.aborted) {
+                await doc.ref.update({ buildLog: fullLog });
+              }
             }
           });
 
+          unsubscribe(); // Clean up listener
+
           // Update deployment status + title from commit message
-          await doc.ref.update({
-            status: result.success ? 'success' : 'failed',
-            duration: result.duration,
-            buildLog: result.log,
-            message: result.commitMessage,
-            completedAt: FieldValue.serverTimestamp()
-          });
+          // (Only if it wasn't already marked canceled by the UI listener)
+          const finalSnap = await doc.ref.get();
+          if (finalSnap.data()?.status !== 'canceled') {
+            await doc.ref.update({
+              status: result.success ? 'success' : 'failed',
+              duration: result.duration,
+              buildLog: result.log,
+              message: result.commitMessage,
+              completedAt: FieldValue.serverTimestamp()
+            });
+          }
 
           // Update site status
           await db.collection('sites').doc(data.siteId).update({

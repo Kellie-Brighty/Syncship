@@ -18,6 +18,7 @@ interface SiteConfig {
   outputDir: string;
   githubToken?: string;
   envVars?: string;
+  abortSignal?: AbortSignal;
   onLog?: (logLine: string, fullLog: string) => Promise<void> | void;
 }
 
@@ -48,9 +49,18 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
 
       if (options.timeout) {
         timeoutId = setTimeout(() => {
-          child.kill('SIGKILL');
+          // Use pkill to kill the whole process group since exec spawns a shell
+          if (child.pid) exec(`pkill -P ${child.pid}`);
           reject(new Error(`Command timed out after ${options.timeout}ms`));
         }, options.timeout);
+      }
+
+      if (site.abortSignal) {
+        site.abortSignal.addEventListener('abort', () => {
+          if (timeoutId) clearTimeout(timeoutId);
+          if (child.pid) exec(`pkill -P ${child.pid}`);
+          reject(new Error('Deployment canceled'));
+        }, { once: true });
       }
 
       if (child.stdout) {
@@ -70,6 +80,8 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
   }
 
   try {
+    if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
+
     // 1. Ensure directories exist
     mkdirSync(REPOS_DIR, { recursive: true });
     mkdirSync(WEB_ROOT, { recursive: true });
@@ -117,6 +129,8 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
 
     // 3. Build if needed (framework projects)
     if (site.buildCommand) {
+      if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
+
       if (existsSync(resolve(repoDir, 'package.json'))) {
         await log(`Installing dependencies...`);
         const hasYarnLock = existsSync(resolve(repoDir, 'yarn.lock'));
@@ -133,12 +147,14 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
     }
 
     // 4. Copy output to web root
+    if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
     const sourceDir = resolve(repoDir, site.outputDir || '.');
     mkdirSync(siteDir, { recursive: true });
     await execStream(`rsync -a --delete ${sourceDir}/ ${siteDir}/`);
     await log(`Files deployed to ${siteDir}`);
 
     // 5. Generate Nginx config
+    if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
     await log('Configuring Nginx...');
     const nginxConfig = generateNginxConfig(cleanDomain, siteDir);
     writeFileSync(`/etc/nginx/sites-available/${cleanDomain}`, nginxConfig);
@@ -155,6 +171,7 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
     await log('Nginx configured and reloaded');
 
     // 6. SSL certificate (Certbot)
+    if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
     await log('Setting up SSL...');
     try {
       await execStream(`certbot --nginx -d ${cleanDomain} --non-interactive --agree-tos --email admin@${cleanDomain} --redirect`, { timeout: 120000 });
