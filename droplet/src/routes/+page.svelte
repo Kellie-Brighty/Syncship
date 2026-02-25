@@ -184,57 +184,103 @@
 
 <!-- ─── PRICING ───────────────────────────────────────────────── -->
 <section id="pricing" class="py-28">
-	<div class="mx-auto max-w-5xl px-6">
+	<div class="mx-auto max-w-4xl px-6">
 		<div class="text-center mb-16 reveal fade-up">
 			<p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Pricing</p>
 			<h2 class="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">
-				Simple pricing.<br /><span class="text-gray-400">No surprises.</span>
+				One price.<br /><span class="text-gray-400">Yours forever.</span>
 			</h2>
-			<p class="mt-4 text-gray-500">Stop paying per-site. Pay once, deploy everything.</p>
+			<p class="mt-4 text-gray-500 max-w-md mx-auto">
+				We're giving founding members lifetime access before we switch to a monthly plan.
+				Lock in now — this offer won't last.
+			</p>
 		</div>
 
-		<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-			<!-- Starter -->
-			<div class="reveal fade-up delay-100 rounded-2xl border border-gray-200 bg-white/80 backdrop-blur p-7 flex flex-col shadow-sm">
-				<p class="text-xs font-bold uppercase tracking-widest text-gray-400">Starter</p>
-				<div class="mt-4"><span class="text-4xl font-black text-gray-900">Free</span></div>
-				<p class="mt-2 text-sm text-gray-500">Perfect for testing and small projects.</p>
-				<ul class="mt-6 space-y-3 flex-1">
-					{#each ['1 Droplet', '3 Sites', 'Deployment Logs', 'Auto SSL', 'Community Support'] as f}
-						<li class="flex items-center gap-2 text-sm text-gray-600"><Check class="h-4 w-4 text-gray-400 shrink-0" />{f}</li>
-					{/each}
-				</ul>
-				<a href="/auth/register" class="mt-8 block rounded-xl border border-gray-200 bg-gray-50 py-2.5 text-center text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">Get Started Free</a>
-			</div>
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
 
-			<!-- Agency -->
-			<div class="reveal fade-up delay-200 rounded-2xl border border-gray-900 bg-gray-900 p-7 flex flex-col relative overflow-hidden shadow-xl">
-				<div class="absolute top-4 right-4 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white uppercase tracking-wider">Most Popular</div>
-				<p class="text-xs font-bold uppercase tracking-widest text-gray-400">Agency</p>
-				<div class="mt-4 flex items-end gap-1">
-					<span class="text-4xl font-black text-white">$29</span>
-					<span class="text-gray-500 mb-1 text-sm">/month</span>
+			<!-- Founding Member Lifetime -->
+			<div class="reveal fade-up delay-100 rounded-2xl border border-gray-900 bg-gray-900 p-8 flex flex-col relative overflow-hidden shadow-2xl">
+				<!-- Founding badge -->
+				<div class="absolute top-4 right-4 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white uppercase tracking-wider">
+					Founding Member
 				</div>
-				<p class="mt-2 text-sm text-gray-400">For agencies managing multiple client sites.</p>
+				<p class="text-xs font-bold uppercase tracking-widest text-gray-400">Lifetime Access</p>
+				<div class="mt-5 flex items-end gap-2">
+					<span class="text-5xl font-black text-white">$59</span>
+					<span class="text-gray-400 mb-1.5 text-sm line-through">$19/mo</span>
+				</div>
+				<p class="mt-2 text-sm text-gray-400">One-time payment. Full access. Forever.</p>
+
+				<!-- Urgency bar -->
+				<div class="mt-5 rounded-xl bg-white/5 border border-white/10 px-4 py-3">
+					<div class="flex items-center justify-between mb-1.5">
+						<span class="text-xs text-gray-400 font-medium">Founding seats</span>
+						<span class="text-xs font-bold text-white">38 / 50 remaining</span>
+					</div>
+					<div class="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+						<div class="bg-white h-1.5 rounded-full" style="width: 24%"></div>
+					</div>
+				</div>
+
 				<ul class="mt-6 space-y-3 flex-1">
-					{#each ['3 Droplets', 'Unlimited Sites', 'Real-time Server Stats', 'Priority Support', 'Team Access', 'Custom Environments'] as f}
-						<li class="flex items-center gap-2 text-sm text-gray-300"><Check class="h-4 w-4 text-gray-400 shrink-0" />{f}</li>
+					{#each [
+						'Unlimited Droplets',
+						'Unlimited Sites',
+						'Live Deployment Logs',
+						'Auto SSL Certificates',
+						'Real-time Server Stats',
+						'All future features included'
+					] as f}
+						<li class="flex items-center gap-2 text-sm text-gray-300">
+							<Check class="h-4 w-4 text-white/60 shrink-0" />{f}
+						</li>
 					{/each}
 				</ul>
-				<a href="/auth/register" class="mt-8 block rounded-xl bg-white py-2.5 text-center text-sm font-bold text-gray-900 hover:bg-gray-100 transition-colors">Start Agency Plan</a>
+
+				<a
+					href="https://buy.polar.sh/polar_cl_c1f58bd5-110d-4d10-97ba-cc94be3b7295"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="mt-8 block rounded-xl bg-white py-3 text-center text-sm font-bold text-gray-900 hover:bg-gray-100 transition-colors shadow"
+				>
+					Get Lifetime Access →
+				</a>
+				<p class="mt-3 text-center text-[11px] text-gray-500">Secure checkout via Polar · No subscription</p>
 			</div>
 
-			<!-- Enterprise -->
-			<div class="reveal fade-up delay-300 rounded-2xl border border-gray-200 bg-white/80 backdrop-blur p-7 flex flex-col shadow-sm">
-				<p class="text-xs font-bold uppercase tracking-widest text-gray-400">Enterprise</p>
-				<div class="mt-4"><span class="text-4xl font-black text-gray-900">Custom</span></div>
-				<p class="mt-2 text-sm text-gray-500">White-label, SSO, and custom SLAs for large teams.</p>
-				<ul class="mt-6 space-y-3 flex-1">
-					{#each ['Unlimited Droplets', 'White-label Dashboard', 'SSO / SAML', 'SLA Guarantee', 'Dedicated Support', 'Custom Integrations'] as f}
-						<li class="flex items-center gap-2 text-sm text-gray-600"><Check class="h-4 w-4 text-gray-400 shrink-0" />{f}</li>
+			<!-- Pro Monthly (coming soon after founding round) -->
+			<div class="reveal fade-up delay-200 rounded-2xl border border-gray-200/70 bg-white/70 backdrop-blur p-8 flex flex-col shadow-sm">
+				<p class="text-xs font-bold uppercase tracking-widest text-gray-400">Pro Monthly</p>
+				<div class="mt-5 flex items-end gap-1">
+					<span class="text-5xl font-black text-gray-900">$19</span>
+					<span class="text-gray-400 mb-1.5 text-sm">/month</span>
+				</div>
+				<p class="mt-2 text-sm text-gray-500">Available after founding member seats are filled.</p>
+
+				<!-- Coming soon overlay feel -->
+				<div class="mt-5 rounded-xl border border-gray-200/60 bg-gray-50/80 px-4 py-3 text-center">
+					<span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Opens when founding round closes</span>
+				</div>
+
+				<ul class="mt-6 space-y-3 flex-1 opacity-60">
+					{#each [
+						'Unlimited Droplets',
+						'Unlimited Sites',
+						'Live Deployment Logs',
+						'Auto SSL Certificates',
+						'Real-time Server Stats',
+						'Cancel anytime'
+					] as f}
+						<li class="flex items-center gap-2 text-sm text-gray-600">
+							<Check class="h-4 w-4 text-gray-300 shrink-0" />{f}
+						</li>
 					{/each}
 				</ul>
-				<a href="mailto:hello@syncship.ink" class="mt-8 block rounded-xl border border-gray-200 bg-gray-50 py-2.5 text-center text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">Contact Us</a>
+
+				<button disabled class="mt-8 block w-full rounded-xl border border-gray-200 bg-gray-100 py-3 text-center text-sm font-semibold text-gray-400 cursor-not-allowed">
+					Not available yet
+				</button>
+				<p class="mt-3 text-center text-[11px] text-gray-400">Get the lifetime deal while it lasts ↑</p>
 			</div>
 		</div>
 	</div>
