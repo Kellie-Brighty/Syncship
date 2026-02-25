@@ -126,9 +126,9 @@
 
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 			{#each [
-				{ Icon: Terminal, title: 'Live Deployment Logs', desc: 'Color-coded terminal output streams live to your dashboard. Know exactly what's happening at every build step.' },
-				{ Icon: Shield, title: 'Auto SSL Certificates', desc: "Free Let's Encrypt certificates provisioned automatically. Every site gets HTTPS from the first deploy." },
-				{ Icon: Activity, title: 'Live Server Stats', desc: 'Real-time CPU & RAM usage pulled directly from your Ubuntu droplet. Keep your server healthy at a glance.' },
+				{ Icon: Terminal, title: 'Live Deployment Logs', desc: "Color-coded terminal output streams live to your dashboard. Know exactly what's happening at every build step." },
+				{ Icon: Shield, title: 'Auto SSL Certificates', desc: "Free Let's Encrypt certs provisioned automatically. Every site gets HTTPS from the first deploy." },
+				{ Icon: Activity, title: 'Live Server Stats', desc: 'Real-time CPU & RAM usage pulled directly from your Ubuntu droplet. Stay on top of server health.' },
 				{ Icon: Globe, title: 'Custom Domains', desc: 'Point any domain to your droplet. Nginx is configured and reloaded automatically every single time.' },
 				{ Icon: GitBranch, title: 'Git-Based Deploys', desc: 'Connect your GitHub repo once. Hit Re-deploy to pull the latest commit, build, and go live instantly.' },
 				{ Icon: Rocket, title: 'Zero Vendor Lock-In', desc: 'Your server, your code, your data. Cancel anytime without losing a single deployment or config.' }
