@@ -20,28 +20,42 @@
   --color-gray-950: #0a0a0a;
 }
 
-/* ─── Base ───────────────────────────────────────────────────── */
+/* ─── Global circle pattern — fixed layer behind EVERYTHING ─── */
 @layer base {
-  html, body {
-    @apply text-gray-900 font-sans antialiased;
+  /*
+   * The pattern lives on html::before so it is always visible
+   * as a fixed background — even under opaque sections on pages
+   * that scroll. Body and all pages stay transparent, letting
+   * the pattern show through universally.
+   */
+  html {
     background-color: #f5f5f5;
+  }
 
-    /* Multi-dimensional circle pattern
-       Layer 1 — tiny dots (close, subtle)
-       Layer 2 — medium ring outlines (mid-distance)
-       Layer 3 — large ring outlines (far, very faint) */
+  html::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+
+    /* Three-depth circle pattern */
+    background-color: #f5f5f5;
     background-image:
-      radial-gradient(circle, rgba(0,0,0,0.055) 1.5px, transparent 1.5px),
+      /* Layer 1 — tiny dots (closest depth) */
+      radial-gradient(circle, rgba(0,0,0,0.07) 1.5px, transparent 1.5px),
+      /* Layer 2 — medium ring outlines (mid depth) */
       radial-gradient(circle,
-        transparent calc(28px - 0.75px),
-        rgba(0,0,0,0.04) 28px,
-        rgba(0,0,0,0.04) calc(28px + 0.75px),
-        transparent calc(28px + 0.75px)
+        transparent calc(28px - 0.8px),
+        rgba(0,0,0,0.045) 28px,
+        rgba(0,0,0,0.045) calc(28px + 0.8px),
+        transparent calc(28px + 0.8px)
       ),
+      /* Layer 3 — large ring outlines (far depth) */
       radial-gradient(circle,
         transparent calc(60px - 0.5px),
-        rgba(0,0,0,0.022) 60px,
-        rgba(0,0,0,0.022) calc(60px + 0.5px),
+        rgba(0,0,0,0.025) 60px,
+        rgba(0,0,0,0.025) calc(60px + 0.5px),
         transparent calc(60px + 0.5px)
       );
     background-size:
@@ -53,9 +67,19 @@
       45px 45px,
       20px 20px;
   }
+
+  body {
+    @apply text-gray-900 font-sans antialiased;
+    background: transparent;
+  }
+
+  /* Make sections transparent so the fixed pattern shows through */
+  section {
+    background-color: transparent;
+  }
 }
 
-/* ─── Glass utility (kept for card use) ─────────────────────── */
+/* ─── Glass utility ──────────────────────────────────────────── */
 .glass {
   background: rgba(255, 255, 255, 0.22);
   backdrop-filter: blur(18px) saturate(160%);
