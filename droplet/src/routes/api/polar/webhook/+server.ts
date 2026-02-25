@@ -2,15 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { Webhook } from 'svix';
 import { adminDb } from '$lib/server/firebase-admin';
-
-// ── Polar webhook handler ────────────────────────────────────────
-// Polar uses the Standard Webhooks (Svix) spec for delivery.
-// Verification uses svix headers: webhook-id, webhook-timestamp, webhook-signature.
-//
-// Required env var:
-//   POLAR_WEBHOOK_SECRET  — shown in Polar Dashboard → Settings → Webhooks
-
-const POLAR_WEBHOOK_SECRET = process.env.POLAR_WEBHOOK_SECRET ?? '';
+import { POLAR_WEBHOOK_SECRET } from '$env/static/private';
 
 export const POST: RequestHandler = async ({ request }) => {
 	const rawBody = await request.text();
