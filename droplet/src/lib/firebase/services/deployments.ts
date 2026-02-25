@@ -6,6 +6,7 @@ import {
   where,
   orderBy,
   limit,
+  getCountFromServer,
   serverTimestamp,
   type DocumentData
 } from 'firebase/firestore';
@@ -61,4 +62,13 @@ export async function createDeployment(
     createdAt: serverTimestamp()
   });
   return docRef.id;
+}
+
+export async function getTotalDeploymentCount(ownerId: string): Promise<number> {
+  const q = query(
+    collection(db, COLLECTION),
+    where('ownerId', '==', ownerId)
+  );
+  const snapshot = await getCountFromServer(q);
+  return snapshot.data().count;
 }

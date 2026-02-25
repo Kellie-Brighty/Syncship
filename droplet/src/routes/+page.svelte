@@ -4,7 +4,7 @@
 	import { Activity, Globe, Server, Plus, CodeSquare } from 'lucide-svelte';
 	import { currentUser, authLoading } from '$lib/stores/auth';
 	import { getSites } from '$lib/firebase/services/sites';
-	import { getDeployments } from '$lib/firebase/services/deployments';
+	import { getDeployments, getTotalDeploymentCount } from '$lib/firebase/services/deployments';
 	import { listenToServerStats } from '$lib/firebase/services/serverStats';
 	import type { Site } from '$lib/types/models';
 	import type { Deployment } from '$lib/types/models';
@@ -13,6 +13,7 @@
 	let sites = $state<Site[]>([]);
 	let deployments = $state<Deployment[]>([]);
 	let stats = $state<ServerStats | null>(null);
+	let totalDeployments = $state(0);
 	let loading = $state(true);
 
 	$effect(() => {
@@ -28,12 +29,14 @@
 	async function loadData(uid: string) {
 		loading = true;
 		try {
-			const [s, d] = await Promise.all([
+			const [s, d, total] = await Promise.all([
 				getSites(uid),
-				getDeployments(uid, 5)
+				getDeployments(uid, 5),
+				getTotalDeploymentCount(uid)
 			]);
 			sites = s;
 			deployments = d;
+			totalDeployments = total;
 			
 			// Setup realtime listener for stats
 			unsubscribeStats = listenToServerStats((incomingStats) => {
@@ -116,7 +119,7 @@
 				</div>
 				<div>
 					<p class="text-sm text-gray-500">Total Deployments</p>
-					<p class="text-xl font-bold text-gray-900">{stats?.totalDeployments ?? deployments.length}</p>
+					<p class="text-xl font-bold text-gray-900">{totalDeployments}</p>
 				</div>
 			</div>
 		</Card>
