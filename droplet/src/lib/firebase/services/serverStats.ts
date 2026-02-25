@@ -2,6 +2,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  onSnapshot,
   serverTimestamp,
   type DocumentData
 } from 'firebase/firestore';
@@ -13,8 +14,8 @@ const COLLECTION = 'serverStats';
 function toServerStats(id: string, data: DocumentData): ServerStats {
   return {
     id,
-    cpuUsage: data.cpuUsage ?? 0,
-    ramUsage: data.ramUsage ?? 0,
+    cpuUsage: data.cpu ?? data.cpuUsage ?? 0,
+    ramUsage: data.memory ?? data.ramUsage ?? 0,
     diskUsage: data.diskUsage ?? 0,
     uptime: data.uptime ?? '0d 0h',
     activeSites: data.activeSites ?? 0,
@@ -39,4 +40,20 @@ export async function updateServerStats(
     ...data,
     timestamp: serverTimestamp()
   }, { merge: true });
+}
+
+export function listenToServerStats(
+  callback: (stats: ServerStats | null) => void,
+  serverId: string = 'live'
+) {
+  const ref = doc(db, COLLECTION, serverId);
+  return onSnapshot(ref, (snapshot) => {
+    if (!snapshot.exists()) {
+      callback(null);
+      return;
+    }
+    callback(toServerStats(snapshot.id, snapshot.data()));
+  }, (error) => {
+    console.error(`Error listening to server stats ${serverId}:`, error);
+  });
 }

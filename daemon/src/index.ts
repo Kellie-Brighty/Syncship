@@ -1,22 +1,42 @@
 import { db } from './firebase.js';
 import { deploySite } from './deployer.js';
 import { FieldValue } from 'firebase-admin/firestore';
+import os from 'os';
+import osutils from 'os-utils';
 
 console.log('🚀 AgencyDroplet Daemon starting...');
 
-// Heartbeat: write to Firestore every 60s so dashboard knows we're alive
-async function sendHeartbeat() {
-  try {
-    await db.collection('daemon').doc('heartbeat').set({
-      lastPing: FieldValue.serverTimestamp(),
-      status: 'online'
-    }, { merge: true });
-  } catch (err) {
-    console.error('Heartbeat failed:', err);
-  }
+// Heartbeat: write to Firestore every 5s so dashboard knows we're alive and has fresh stats
+function sendHeartbeat() {
+  osutils.cpuUsage(async (cpuPercent) => {
+    try {
+      const totalRam = os.totalmem() / (1024 * 1024 * 1024); // GB
+      const freeRam = os.freemem() / (1024 * 1024 * 1024);   // GB
+      const usedRam = totalRam - freeRam;
+      const memPercent = (usedRam / totalRam) * 100;
+
+      // 1. Keep the daemon status alive
+      await db.collection('daemon').doc('heartbeat').set({
+        lastPing: FieldValue.serverTimestamp(),
+        status: 'online'
+      }, { merge: true });
+
+      // 2. Stream live OS stats for the dashboard charts
+      await db.collection('serverStats').doc('live').set({
+        timestamp: FieldValue.serverTimestamp(),
+        cpu: cpuPercent * 100,
+        memory: memPercent,
+        totalRamGb: totalRam,
+        usedRamGb: usedRam
+      });
+    } catch (err) {
+      console.error('Heartbeat failed:', err);
+    }
+  });
 }
+
 sendHeartbeat();
-setInterval(sendHeartbeat, 60000);
+setInterval(sendHeartbeat, 5000);
 
 // Listen for queued deployments and process them
 function startDeploymentListener() {

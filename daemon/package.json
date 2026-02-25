@@ -9,11 +9,13 @@
     "build": "tsc"
   },
   "dependencies": {
-    "firebase-admin": "^13.0.0"
+    "firebase-admin": "^13.0.0",
+    "os-utils": "^0.0.14"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/os-utils": "^0.0.4",
     "tsx": "^4.19.0",
-    "typescript": "^5.9.0",
-    "@types/node": "^22.0.0"
+    "typescript": "^5.9.0"
   }
 }

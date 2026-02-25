@@ -5,7 +5,7 @@
 	import { currentUser, authLoading } from '$lib/stores/auth';
 	import { getSites } from '$lib/firebase/services/sites';
 	import { getDeployments } from '$lib/firebase/services/deployments';
-	import { getServerStats } from '$lib/firebase/services/serverStats';
+	import { listenToServerStats } from '$lib/firebase/services/serverStats';
 	import type { Site } from '$lib/types/models';
 	import type { Deployment } from '$lib/types/models';
 	import type { ServerStats } from '$lib/types/models';
@@ -22,23 +22,33 @@
 		}
 	});
 
+	import { onDestroy } from 'svelte';
+	let unsubscribeStats: (() => void) | null = null;
+
 	async function loadData(uid: string) {
 		loading = true;
 		try {
-			const [s, d, st] = await Promise.all([
+			const [s, d] = await Promise.all([
 				getSites(uid),
-				getDeployments(uid, 5),
-				getServerStats()
+				getDeployments(uid, 5)
 			]);
 			sites = s;
 			deployments = d;
-			stats = st;
+			
+			// Setup realtime listener for stats
+			unsubscribeStats = listenToServerStats((incomingStats) => {
+				stats = incomingStats;
+			}, 'live');
 		} catch (err) {
 			console.error('Failed to load dashboard data:', err);
 		} finally {
 			loading = false;
 		}
 	}
+
+	onDestroy(() => {
+		if (unsubscribeStats) unsubscribeStats();
+	});
 
 	function timeAgo(date: Date): string {
 		const seconds = Math.floor((Date.now() - date.getTime()) / 1000);

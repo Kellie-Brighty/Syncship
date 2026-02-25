@@ -43,6 +43,9 @@
 
 	// Deploy state
 	let deploying = $state(false);
+	let saveState = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
+	
+	let logContainer = $state<HTMLElement | null>(null);
 
 	// Expand state for deployment logs
 	let expandedDeployId = $state<string | null>(null);
@@ -55,6 +58,18 @@
 		const user = $currentUser;
 		const id = $page.params.id;
 		if (user && id) startListening(id);
+	});
+
+	// Auto-scroll the terminal logs to the bottom as new logs stream in
+	$effect(() => {
+		if (deployments.length > 0 && deployments[0].buildLog && logContainer) {
+			// Small delay to let the DOM paint first
+			setTimeout(() => {
+				if (logContainer) {
+					logContainer.scrollTop = logContainer.scrollHeight;
+				}
+			}, 10);
+		}
 	});
 
 	onDestroy(() => {
@@ -243,6 +258,27 @@
 		return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 	}
 
+	// Simple terminal color parser for keywords
+	function parseLogColors(log: string): string {
+		if (!log) return '';
+		
+		// Escape HTML first to prevent injection
+		let safeLog = log
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#039;');
+
+		// Then apply color spans based on keywords
+		return safeLog
+			.replace(/^(.*?(?:ERR|ERROR|failed|Failed).*)$/gm, '<span class="text-red-400">$1</span>')
+			.replace(/^(.*?(?:WARN|Warning).*)$/gm, '<span class="text-yellow-400">$1</span>')
+			.replace(/^(.*?(?:success|Success|✅).*)$/gm, '<span class="text-green-400">$1</span>')
+			.replace(/([0-9]+\.[0-9]+\s*(?:kB|MB|ms|s))/g, '<span class="text-blue-300">$1</span>')
+			.replace(/(npm install|bun run build|npm run build|vite|npm audit|npm fund)/g, '<span class="text-purple-400">$1</span>');
+	}
+
 	const statusConfig: Record<string, { icon: any; classes: string; dotColor: string; label: string }> = {
 		live: { icon: CheckCircle, classes: 'bg-green-50 text-green-700', dotColor: 'bg-green-500', label: 'Live' },
 		building: { icon: Loader, classes: 'bg-yellow-50 text-yellow-700', dotColor: 'bg-yellow-500', label: 'Building' },
@@ -250,6 +286,25 @@
 		pending: { icon: Clock, classes: 'bg-gray-100 text-gray-600', dotColor: 'bg-gray-400', label: 'Pending' }
 	};
 </script>
+
+<style>
+	/* Custom Terminal Scrollbar */
+	.custom-scrollbar::-webkit-scrollbar {
+		width: 8px;
+		height: 8px;
+	}
+	.custom-scrollbar::-webkit-scrollbar-track {
+		background: rgba(0, 0, 0, 0.2);
+		border-radius: 4px;
+	}
+	.custom-scrollbar::-webkit-scrollbar-thumb {
+		background: rgba(255, 255, 255, 0.1);
+		border-radius: 4px;
+	}
+	.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+		background: rgba(255, 255, 255, 0.2);
+	}
+</style>
 
 <svelte:head>
 	<title>{site?.name ?? 'Site'} | SyncShip</title>
@@ -443,12 +498,23 @@
 										</div>
 									{/if}
 									{#if deploy.buildLog}
-										<div class="rounded-md bg-gray-900 p-3 overflow-x-auto relative min-h-[100px]">
-											<pre class="text-xs font-mono text-gray-300 whitespace-pre-wrap">{deploy.buildLog}</pre>
+										<div 
+											class="rounded-md bg-[#1e1e1e] p-4 overflow-x-auto overflow-y-auto relative max-h-[400px] border border-gray-800 shadow-inner custom-scrollbar"
+											bind:this={logContainer}
+										>
+											<div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-800/50 sticky top-0 bg-[#1e1e1e]/90 backdrop-blur-sm">
+												<div class="flex gap-1.5">
+													<div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+													<div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+													<div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+												</div>
+												<span class="text-[10px] font-mono text-gray-500 uppercase tracking-wider ml-2">Terminal Output</span>
+											</div>
+											<pre class="text-[13px] leading-relaxed font-mono text-gray-300 whitespace-pre-wrap font-medium">{@html parseLogColors(deploy.buildLog)}</pre>
 											{#if deploy.status === 'building' || deploy.status === 'queued'}
-												<div class="mt-2 flex items-center gap-2 text-xs text-yellow-500 font-mono">
+												<div class="mt-4 flex items-center gap-2 text-xs text-yellow-500/90 font-mono animate-pulse bg-yellow-500/10 inline-flex px-2 py-1 rounded">
 													<Loader class="h-3 w-3 animate-spin" />
-													<span>Streaming logs...</span>
+													<span>Streaming live logs...</span>
 												</div>
 											{/if}
 										</div>
