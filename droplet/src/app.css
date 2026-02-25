@@ -20,23 +20,42 @@
   --color-gray-950: #0a0a0a;
 }
 
-/* Base styles */
+/* ─── Base ───────────────────────────────────────────────────── */
 @layer base {
-  body {
+  html, body {
     @apply text-gray-900 font-sans antialiased;
-    /* Rich blob background — gives the glass something to refract */
-    background-color: #dde3e8;
+    background-color: #f5f5f5;
+
+    /* Multi-dimensional circle pattern
+       Layer 1 — tiny dots (close, subtle)
+       Layer 2 — medium ring outlines (mid-distance)
+       Layer 3 — large ring outlines (far, very faint) */
     background-image:
-      radial-gradient(ellipse 70% 60% at 15% 20%, rgba(180,195,210,0.9) 0%, transparent 70%),
-      radial-gradient(ellipse 60% 55% at 85% 75%, rgba(160,180,200,0.8) 0%, transparent 70%),
-      radial-gradient(ellipse 50% 45% at 50% 50%, rgba(200,212,220,0.6) 0%, transparent 65%);
+      radial-gradient(circle, rgba(0,0,0,0.055) 1.5px, transparent 1.5px),
+      radial-gradient(circle,
+        transparent calc(28px - 0.75px),
+        rgba(0,0,0,0.04) 28px,
+        rgba(0,0,0,0.04) calc(28px + 0.75px),
+        transparent calc(28px + 0.75px)
+      ),
+      radial-gradient(circle,
+        transparent calc(60px - 0.5px),
+        rgba(0,0,0,0.022) 60px,
+        rgba(0,0,0,0.022) calc(60px + 0.5px),
+        transparent calc(60px + 0.5px)
+      );
+    background-size:
+      26px 26px,
+      90px 90px,
+      200px 200px;
+    background-position:
+      0 0,
+      45px 45px,
+      20px 20px;
   }
 }
 
-/* ─── Glass utility class ────────────────────────────────────────
-   Apply to any element. Requires a colorful/blurred layer behind
-   it for backdrop-filter to work visually.
-─────────────────────────────────────────────────────────────── */
+/* ─── Glass utility (kept for card use) ─────────────────────── */
 .glass {
   background: rgba(255, 255, 255, 0.22);
   backdrop-filter: blur(18px) saturate(160%);
@@ -48,18 +67,4 @@
   box-shadow:
     0 8px 32px rgba(100, 120, 140, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.70);
-}
-
-/* Heavier glass — more frosted, more opaque */
-.glass-heavy {
-  background: rgba(255, 255, 255, 0.40);
-  backdrop-filter: blur(28px) saturate(140%);
-  -webkit-backdrop-filter: blur(28px) saturate(140%);
-  border-top: 1px solid rgba(255, 255, 255, 0.75);
-  border-left: 1px solid rgba(255, 255, 255, 0.60);
-  border-right: 1px solid rgba(255, 255, 255, 0.25);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.20);
-  box-shadow:
-    0 12px 48px rgba(80, 100, 120, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.80);
 }
