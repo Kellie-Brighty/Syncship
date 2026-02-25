@@ -186,7 +186,7 @@
 </header>
 
 <!-- ─── HERO ──────────────────────────────────────────────────── -->
-<section class="hero-section relative min-h-screen flex items-center justify-center overflow-hidden pt-32 pb-24">
+<section class="hero-section glass relative min-h-screen flex items-center justify-center overflow-hidden pt-32 pb-24">
 	<!-- Frosted glass texture overlay -->
 	<div class="hero-noise absolute inset-0 pointer-events-none"></div>
 	<!-- Glass shimmer bands -->
