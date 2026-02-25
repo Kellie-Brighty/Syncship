@@ -5,20 +5,10 @@
 	let heroCanvas: HTMLCanvasElement;
 	let animFrame: number;
 
-	// ── Water drop types ──────────────────────────────────────
-	interface Drop {
-		x: number; y: number;
-		r: number; maxR: number;
-		opacity: number;
-		phase: 'grow' | 'hold' | 'fade';
-		holdTimer: number;
-		speed: number;
-	}
+	interface Drop { x:number; y:number; r:number; maxR:number; opacity:number; phase:'grow'|'hold'|'fade'; holdTimer:number; speed:number; }
 
 	function initWaterDrops(canvas: HTMLCanvasElement) {
 		const ctx = canvas.getContext('2d')!;
-		const drops: Drop[] = [];
-		const MAX_DROPS = 28;
 
 		function resize() {
 			canvas.width  = canvas.offsetWidth  * window.devicePixelRatio;
@@ -26,85 +16,110 @@
 			ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 		}
 
+		// ── Condensation drops ──────────────────────────────
+		interface CDrop { x:number; y:number; r:number; maxR:number; opacity:number; phase:'grow'|'hold'|'fade'; holdTimer:number; speed:number; }
+		const drops: CDrop[] = [];
+
 		function spawnDrop() {
-			const maxR = 12 + Math.random() * 28;
-			drops.push({
-				x: Math.random() * canvas.offsetWidth,
-				y: Math.random() * canvas.offsetHeight,
-				r: 0, maxR,
-				opacity: 0,
-				phase: 'grow',
-				holdTimer: 60 + Math.random() * 80,
-				speed: 0.25 + Math.random() * 0.4
+			const maxR = 4 + Math.random() * 18;
+			drops.push({ x:Math.random()*canvas.offsetWidth, y:Math.random()*canvas.offsetHeight,
+				r:0, maxR, opacity:0, phase:'grow', holdTimer:90+Math.random()*120, speed:0.15+Math.random()*0.3 });
+		}
+
+		function drawDrop(d: CDrop) {
+			if (d.r < 0.5) return;
+			const {x,y,r,opacity} = d;
+			// frosted glass body
+			const body = ctx.createRadialGradient(x-r*0.3,y-r*0.35,r*0.02, x,y,r);
+			body.addColorStop(0, `rgba(255,255,255,${opacity*0.70})`);
+			body.addColorStop(0.5,`rgba(220,232,245,${opacity*0.18})`);
+			body.addColorStop(1,  `rgba(185,210,230,${opacity*0.30})`);
+			ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+			ctx.fillStyle = body; ctx.fill();
+			// border
+			ctx.strokeStyle=`rgba(255,255,255,${opacity*0.55})`; ctx.lineWidth=0.7; ctx.stroke();
+			// highlight
+			ctx.beginPath(); ctx.arc(x-r*0.28,y-r*0.32,r*0.25,0,Math.PI*2);
+			ctx.fillStyle=`rgba(255,255,255,${opacity*0.70})`; ctx.fill();
+		}
+
+		// ── Water streaks ────────────────────────────────────
+		interface Streak { x:number; y:number; length:number; width:number; opacity:number; speed:number; wiggle:number; phase:'fall'|'fade'; }
+		const streaks: Streak[] = [];
+
+		function spawnStreak() {
+			streaks.push({
+				x: 30+Math.random()*(canvas.offsetWidth-60),
+				y: -40,
+				length: 30+Math.random()*80,
+				width: 1+Math.random()*2.5,
+				opacity: 0.18+Math.random()*0.28,
+				speed: 0.6+Math.random()*1.4,
+				wiggle: (Math.random()-0.5)*0.6,
+				phase: 'fall'
 			});
 		}
 
-		function drawDrop(d: Drop) {
-			const { x, y, r, opacity } = d;
-			if (r < 1) return;
-
-			// outer ring – subtle white border
+		function drawStreak(s: Streak) {
+			const grad = ctx.createLinearGradient(s.x, s.y, s.x+s.wiggle*s.length*0.3, s.y+s.length);
+			grad.addColorStop(0, `rgba(255,255,255,0)`);
+			grad.addColorStop(0.3, `rgba(210,228,245,${s.opacity})`);
+			grad.addColorStop(0.85,`rgba(200,222,240,${s.opacity*0.8})`);
+			grad.addColorStop(1, `rgba(255,255,255,0)`);
 			ctx.beginPath();
-			ctx.arc(x, y, r, 0, Math.PI * 2);
-			ctx.strokeStyle = `rgba(255,255,255,${opacity * 0.45})`;
-			ctx.lineWidth = 0.8;
+			ctx.moveTo(s.x, s.y);
+			ctx.quadraticCurveTo(s.x+s.wiggle*20, s.y+s.length*0.5, s.x+s.wiggle*10, s.y+s.length);
+			ctx.strokeStyle = grad;
+			ctx.lineWidth = s.width;
+			ctx.lineCap = 'round';
 			ctx.stroke();
-
-			// glass body – radial gradient for refraction look
-			const grad = ctx.createRadialGradient(x - r*0.3, y - r*0.35, r*0.05, x, y, r);
-			grad.addColorStop(0, `rgba(255,255,255,${opacity * 0.55})`);
-			grad.addColorStop(0.45, `rgba(220,230,240,${opacity * 0.10})`);
-			grad.addColorStop(1,  `rgba(180,210,235,${opacity * 0.22})`);
-			ctx.beginPath();
-			ctx.arc(x, y, r, 0, Math.PI * 2);
-			ctx.fillStyle = grad;
-			ctx.fill();
-
-			// specular highlight
-			ctx.beginPath();
-			ctx.arc(x - r*0.28, y - r*0.32, r * 0.22, 0, Math.PI * 2);
-			ctx.fillStyle = `rgba(255,255,255,${opacity * 0.65})`;
-			ctx.fill();
-
-			// tiny secondary highlight
-			ctx.beginPath();
-			ctx.arc(x + r*0.2, y + r*0.25, r * 0.08, 0, Math.PI * 2);
-			ctx.fillStyle = `rgba(255,255,255,${opacity * 0.35})`;
-			ctx.fill();
 		}
 
 		function tick() {
 			ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
 
-			if (drops.length < MAX_DROPS && Math.random() < 0.04) spawnDrop();
+			// spawn drops
+			if (drops.length < 35 && Math.random() < 0.06) spawnDrop();
+			// spawn streaks
+			if (streaks.length < 12 && Math.random() < 0.015) spawnStreak();
 
-			for (let i = drops.length - 1; i >= 0; i--) {
+			// draw & update streaks first (behind drops)
+			for (let i=streaks.length-1; i>=0; i--) {
+				const s = streaks[i];
+				drawStreak(s);
+				if (s.phase === 'fall') {
+					s.y += s.speed;
+					if (s.y > canvas.offsetHeight + 20) { streaks.splice(i,1); continue; }
+				}
+			}
+
+			// draw & update condensation drops
+			for (let i=drops.length-1; i>=0; i--) {
 				const d = drops[i];
-				if (d.phase === 'grow') {
-					d.r += d.speed;
-					d.opacity = Math.min(0.85, d.opacity + 0.03);
-					if (d.r >= d.maxR) d.phase = 'hold';
-				} else if (d.phase === 'hold') {
+				if (d.phase==='grow') {
+					d.r += d.speed; d.opacity = Math.min(0.88, d.opacity+0.025);
+					if (d.r>=d.maxR) d.phase='hold';
+				} else if (d.phase==='hold') {
 					d.holdTimer--;
-					if (d.holdTimer <= 0) d.phase = 'fade';
+					if (d.holdTimer<=0) d.phase='fade';
 				} else {
-					d.r += d.speed * 0.3;
-					d.opacity -= 0.012;
-					if (d.opacity <= 0) { drops.splice(i, 1); continue; }
+					d.opacity -= 0.010;
+					if (d.opacity<=0) { drops.splice(i,1); continue; }
 				}
 				drawDrop(d);
 			}
+
 			animFrame = requestAnimationFrame(tick);
 		}
 
 		resize();
 		window.addEventListener('resize', resize);
-		// pre-seed a handful of drops
-		for (let i = 0; i < 12; i++) {
+		// pre-seed
+		for (let i=0; i<18; i++) {
 			spawnDrop();
-			drops[i].r = Math.random() * drops[i].maxR;
-			drops[i].opacity = 0.3 + Math.random() * 0.5;
-			drops[i].phase = Math.random() > 0.5 ? 'hold' : 'grow';
+			const d=drops[i];
+			d.r=Math.random()*d.maxR*0.8; d.opacity=0.3+Math.random()*0.5;
+			d.phase = Math.random()>0.4 ? 'hold' : 'grow';
 		}
 		tick();
 	}
@@ -171,19 +186,18 @@
 </header>
 
 <!-- ─── HERO ──────────────────────────────────────────────────── -->
-<section class="relative min-h-screen flex items-center justify-center overflow-hidden bg-gray-50 pt-16">
-	<!-- Water drop canvas -->
-	<canvas bind:this={heroCanvas} class="absolute inset-0 w-full h-full pointer-events-none" style="mix-blend-mode: multiply;"></canvas>
+<section class="relative min-h-screen flex items-center justify-center overflow-hidden pt-32 pb-24" style="background: linear-gradient(160deg, #e6ecf0 0%, #eef2f5 45%, #e2e8ed 100%);">
+	<!-- Frosted glass texture overlay -->
+	<div class="absolute inset-0 pointer-events-none" style="background: url(\"data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\") center/512px; opacity: 0.03;"></div>
+	<!-- Glass shimmer bands -->
+	<div class="absolute inset-0 pointer-events-none" style="background: linear-gradient(105deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0.25) 60%, rgba(255,255,255,0) 100%);"></div>
+	<!-- Bottom fog fade -->
+	<div class="absolute bottom-0 inset-x-0 h-40 pointer-events-none" style="background: linear-gradient(to top, rgba(230,236,240,0.8), transparent);"></div>
 
-	<!-- Soft radial blobs -->
-	<div class="absolute top-[-180px] left-[-180px] w-[550px] h-[550px] rounded-full bg-gray-200/50 blur-[90px] pointer-events-none"></div>
-	<div class="absolute bottom-[-180px] right-[-180px] w-[450px] h-[450px] rounded-full bg-gray-300/35 blur-[100px] pointer-events-none"></div>
+	<!-- Water drop canvas -->
+	<canvas bind:this={heroCanvas} class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
 
 	<div class="relative z-10 mx-auto max-w-5xl px-6 text-center">
-		<div class="reveal fade-up inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/80 backdrop-blur px-4 py-1.5 mb-8 shadow-sm">
-			<span class="h-1.5 w-1.5 rounded-full bg-gray-900 animate-pulse"></span>
-			<span class="text-xs font-semibold text-gray-700 tracking-wide uppercase">Now in Beta — Free to Join</span>
-		</div>
 
 		<h1 class="reveal fade-up delay-100 text-5xl sm:text-6xl lg:text-7xl font-black text-gray-900 tracking-tight leading-[1.05]">
 			Ship Your Clients' Sites.
