@@ -35,9 +35,18 @@ function sendHeartbeat() {
   });
 }
 
-sendHeartbeat();
-setInterval(sendHeartbeat, 30000); // 30s interval = ~5,760 writes/day (safe for Firebase 20k free tier)
+sendHeartbeat(); // One-time ping on startup
 
+// Listen for commands from the dashboard (e.g., refresh server stats)
+db.collection('daemon').doc('commands').onSnapshot(async (snap) => {
+  const data = snap.data();
+  if (data && data.action === 'refresh_stats') {
+    console.log('🔄 Dashboard requested fresh stats');
+    sendHeartbeat();
+    // Acknowledge the command so it doesn't run repeatedly
+    await snap.ref.update({ action: null }).catch(() => {});
+  }
+});
 // Listen for queued deployments and process them
 function startDeploymentListener() {
   console.log('👂 Listening for deployment requests...\n');
@@ -108,18 +117,9 @@ function startDeploymentListener() {
             outputDir: site.outputDir || '.',
             githubToken,
             envVars: site.envVars,
-            abortSignal: abortController.signal,
-            onLog: async (line, fullLog) => {
-              // Throttle logs: max 1 write per second to prevent Firestore quota exhaustion
-              if (abortController.signal.aborted) return;
-              
-              const now = Date.now();
-              if (now - lastLogUpdate > 1000) {
-                lastLogUpdate = now;
-                // Fire and forget; the final log is guaranteed to be saved at the end
-                doc.ref.update({ buildLog: fullLog }).catch(() => {});
-              }
-            }
+            abortSignal: abortController.signal
+            // Removed onLog completely: no live logs stream to Firestore anymore to protect quota.
+            // Logs are only saved at the very end when the build succeeds or fails.
           });
 
           unsubscribe(); // Clean up listener

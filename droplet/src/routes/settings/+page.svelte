@@ -99,11 +99,31 @@
 				const ts = data.lastPing?.toDate();
 				lastHeartbeat = ts;
 				const diffMs = Date.now() - (ts?.getTime() || 0);
-				serverStatus = diffMs < 120000 ? 'online' : 'offline'; // 2 min threshold
+				// Expanded to 24h since heartbeats are now manual.
+				serverStatus = diffMs < 86400000 ? 'online' : 'offline';
 			} else {
 				serverStatus = 'offline';
 			}
 		} catch { serverStatus = 'offline'; }
+	}
+
+	let refreshingDaemon = $state(false);
+	async function refreshDaemonStatus() {
+		if (refreshingDaemon) return;
+		refreshingDaemon = true;
+		try {
+			serverStatus = 'checking';
+			await setDoc(doc(db, 'daemon', 'commands'), { action: 'refresh_stats', timestamp: Date.now() });
+			// Give daemon 1.5s to respond and update heartbeat
+			setTimeout(async () => {
+				await checkDaemonStatus();
+				refreshingDaemon = false;
+			}, 1500);
+		} catch (err) {
+			console.error('Failed to command daemon:', err);
+			refreshingDaemon = false;
+			serverStatus = 'offline';
+		}
 	}
 </script>
 
@@ -171,7 +191,7 @@
 				<h3 class="text-sm font-semibold text-gray-900">Daemon Status</h3>
 				<p class="mt-0.5 text-sm text-gray-500">Your SyncShip deployment engine.</p>
 				<div class="mt-3 flex items-center gap-3">
-					{#if serverStatus === 'checking'}
+					{#if serverStatus === 'checking' || refreshingDaemon}
 						<span class="inline-flex items-center gap-1.5 text-sm text-gray-500">
 							<span class="h-2 w-2 rounded-full bg-gray-300 animate-pulse"></span>
 							Checking...
@@ -187,6 +207,17 @@
 							Offline
 						</span>
 					{/if}
+
+					<Button 
+						variant="secondary" 
+						size="sm" 
+						class="text-xs px-2 py-1 h-7 ml-4"
+						onclick={refreshDaemonStatus}
+						disabled={refreshingDaemon}
+					>
+						Refresh Status
+					</Button>
+				</div>
 					{#if lastHeartbeat}
 						<span class="text-xs text-gray-400">Last seen: {lastHeartbeat.toLocaleTimeString()}</span>
 					{/if}

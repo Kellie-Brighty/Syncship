@@ -5,13 +5,13 @@
 	import {
 		Globe, ArrowLeft, ExternalLink, GitBranch, Clock, CheckCircle,
 		XCircle, Loader, Settings, Trash2, Rocket, Copy, Check, ChevronDown,
-		FileText, Upload
+		FileText, Upload, X
 	} from 'lucide-svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { currentUser } from '$lib/stores/auth';
 	import { getSiteById, updateSite, deleteSite } from '$lib/firebase/services/sites';
-	import { getDeploymentsBySite, createDeployment } from '$lib/firebase/services/deployments';
+	import { getDeploymentsBySite, createDeployment, cancelDeployment } from '$lib/firebase/services/deployments';
 	import type { Site, Deployment } from '$lib/types/models';
 	import { get } from 'svelte/store';
 	import { doc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
@@ -300,6 +300,19 @@
 		}
 	}
 
+	let canceling = false;
+	async function cancelBuild(deployId: string) {
+		if (canceling) return;
+		canceling = true;
+		try {
+			await cancelDeployment(deployId);
+		} catch (err) {
+			console.error('Failed to cancel deployment:', err);
+		} finally {
+			canceling = false;
+		}
+	}
+
 	function timeAgo(date: Date | null): string {
 		if (!date) return 'Never';
 		const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -532,7 +545,7 @@
 				<Card class="overflow-hidden">
 				<div class="divide-y divide-gray-100">
 					{#each deployments.slice(0, 3) as deploy}
-						{@const dStatus = deploy.status === 'success' ? 'bg-green-500' : deploy.status === 'failed' ? 'bg-red-500' : deploy.status === 'building' ? 'bg-yellow-500 animate-pulse' : 'bg-gray-400'}
+						{@const dStatus = deploy.status === 'success' ? 'bg-green-500' : deploy.status === 'failed' ? 'bg-red-500' : deploy.status === 'canceled' ? 'bg-gray-400' : deploy.status === 'building' ? 'bg-yellow-500 animate-pulse' : 'bg-gray-400'}
 						{@const isExpanded = expandedDeployId === deploy.id}
 						<div>
 							<button
@@ -550,6 +563,15 @@
 									<ChevronDown class="h-3.5 w-3.5 transition-transform {isExpanded ? 'rotate-180' : ''}" />
 								</div>
 							</button>
+							{#if (deploy.status === 'building' || deploy.status === 'queued')}
+								<button
+									onclick={(e) => { e.stopPropagation(); cancelBuild(deploy.id); }}
+									disabled={canceling}
+									class="w-full flex items-center justify-center gap-1.5 px-4 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 border-t border-gray-100 transition-colors {canceling ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}"
+								>
+									<X class="h-3 w-3" /> {canceling ? 'Canceling...' : 'Cancel build'}
+								</button>
+							{/if}
 							{#if isExpanded}
 								<div class="px-4 pb-3">
 									{#if deploy.status === 'failed'}

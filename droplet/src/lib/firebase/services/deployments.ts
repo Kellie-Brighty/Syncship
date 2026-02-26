@@ -8,6 +8,8 @@ import {
   limit,
   getCountFromServer,
   serverTimestamp,
+  doc,
+  updateDoc,
   type DocumentData
 } from 'firebase/firestore';
 import { db } from '$lib/firebase/client';
@@ -71,4 +73,11 @@ export async function getTotalDeploymentCount(ownerId: string): Promise<number> 
   );
   const snapshot = await getCountFromServer(q);
   return snapshot.data().count;
+}
+
+export async function cancelDeployment(deploymentId: string): Promise<void> {
+  await updateDoc(doc(db, COLLECTION, deploymentId), {
+    status: 'canceled',
+    completedAt: serverTimestamp()
+  });
 }

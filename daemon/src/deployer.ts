@@ -2,6 +2,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
+import cliProgress from 'cli-progress';
 
 const execAsync = promisify(exec);
 
@@ -29,9 +30,25 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
   const startTime = Date.now();
   const logs: string[] = [];
 
-  async function log(msg: string) {
-    console.log(`  [${site.name}] ${msg}`);
+  console.log(`\n▶️ Starting deployment for ${site.name}`);
+  const progressBar = new cliProgress.SingleBar({
+    format: `  📦 [{bar}] {percentage}% | {stepName}`,
+    clearOnComplete: false,
+    hideCursor: true
+  }, cliProgress.Presets.shades_classic);
+
+  progressBar.start(7, 0, { stepName: 'Initializing...' });
+  let currentStep = 0;
+
+  async function log(msg: string, stepIncrement = 0, stepName?: string) {
     logs.push(msg);
+    if (stepIncrement > 0) {
+      currentStep += stepIncrement;
+      progressBar.update(currentStep, { stepName: stepName || msg });
+    } else if (stepName) {
+      progressBar.update(currentStep, { stepName });
+    }
+    
     if (site.onLog) {
       try { await site.onLog(msg, logs.join('\n')); } catch (e) { /* ignore */ }
     }
@@ -103,11 +120,11 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
     }
 
     if (existsSync(repoDir)) {
-      await log('Pulling latest changes...');
+      await log('Pulling latest changes...', 1, 'Fetching source code');
       // Note: If the token changes, pull might fail if the remote URL wasn't updated. For MVP we just pull.
       await execStream(`cd ${repoDir} && git remote set-url origin ${cloneUrl}.git && git fetch origin && git reset --hard origin/${site.branch}`, { timeout: 60000 });
     } else {
-      await log(`Cloning ${site.repo}...`);
+      await log(`Cloning ${site.repo}...`, 1, 'Cloning repository');
       await execStream(`git clone --colors --branch ${site.branch} --single-branch ${cloneUrl}.git ${repoDir}`, { timeout: 120000 });
     }
 
@@ -123,8 +140,10 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
 
     // 2.5 Inject Environment Variables if they exist
     if (site.envVars) {
-      await log('Injecting stored .env variables...');
+      await log('Injecting stored .env variables...', 1, 'Configuring environment');
       writeFileSync(resolve(repoDir, '.env'), site.envVars);
+    } else {
+      await log('No .env variables to map', 1, 'Configuring environment');
     }
 
     // 3. Build if needed (framework projects)
@@ -132,18 +151,20 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
       if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
 
       if (existsSync(resolve(repoDir, 'package.json'))) {
-        await log(`Installing dependencies...`);
+        await log(`Installing dependencies...`, 1, 'Installing dependencies');
         const hasYarnLock = existsSync(resolve(repoDir, 'yarn.lock'));
         const hasPnpmLock = existsSync(resolve(repoDir, 'pnpm-lock.yaml'));
         const installCmd = hasPnpmLock ? 'pnpm install' : hasYarnLock ? 'yarn install' : 'npm install';
         await execStream(`cd ${repoDir} && ${installCmd}`, { timeout: 300000 });
       } else {
-        await log(`No package.json found in root. Skipping auto-install (assuming build command handles it)...`);
+        await log(`No package.json found in root. Skipping auto-install...`, 1, 'Preparing build');
       }
 
-      await log(`Running build: ${site.buildCommand}`);
+      await log(`Running build: ${site.buildCommand}`, 1, 'Building project');
       await execStream(`cd ${repoDir} && ${site.buildCommand}`, { timeout: 300000 });
       await log('Build complete');
+    } else {
+      await log('No build command specified, skipping build', 2, 'Skipping build');
     }
 
     // 4. Copy output to web root
@@ -151,11 +172,11 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
     const sourceDir = resolve(repoDir, site.outputDir || '.');
     mkdirSync(siteDir, { recursive: true });
     await execStream(`rsync -a --delete ${sourceDir}/ ${siteDir}/`);
-    await log(`Files deployed to ${siteDir}`);
+    await log(`Files deployed to ${siteDir}`, 1, 'Deploying files');
 
     // 5. Generate Nginx config
     if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
-    await log('Configuring Nginx...');
+    await log('Configuring Nginx...', 1, 'Configuring Nginx');
     const nginxConfig = generateNginxConfig(cleanDomain, siteDir);
     writeFileSync(`/etc/nginx/sites-available/${cleanDomain}`, nginxConfig);
 
@@ -172,7 +193,7 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
 
     // 6. SSL certificate (Certbot)
     if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
-    await log('Setting up SSL...');
+    await log('Setting up SSL...', 1, 'Setting up SSL');
     try {
       await execStream(`certbot --nginx -d ${cleanDomain} --non-interactive --agree-tos --email admin@${cleanDomain} --redirect`, { timeout: 120000 });
       await log('SSL certificate installed');
@@ -180,12 +201,15 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
       await log(`SSL warning: ${sslErr.message} (site will still work on HTTP)`);
     }
 
+    progressBar.update(7, { stepName: 'Done' });
+    progressBar.stop();
     const duration = formatDuration(Date.now() - startTime);
     await log(`✅ Deployed successfully in ${duration}`);
 
     return { success: true, duration, log: logs.join('\n'), commitMessage };
 
   } catch (err: any) {
+    progressBar.stop();
     const duration = formatDuration(Date.now() - startTime);
     await log(`❌ Deploy failed: ${err.message}`);
     return { success: false, duration, log: logs.join('\n'), commitMessage: 'Manual deployment' };
