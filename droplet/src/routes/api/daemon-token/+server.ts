@@ -1,9 +1,9 @@
-import { json } from '@sveltejs/kit';
+import { json, type RequestEvent } from '@sveltejs/kit';
 import { adminDb } from '$lib/server/firebase-admin';
 import { getAuth } from 'firebase-admin/auth';
 import crypto from 'crypto';
 
-export async function POST({ request }) {
+export async function POST({ request }: RequestEvent) {
 	try {
         // 1. Authenticate the caller using standard Firebase ID Tokens
 		const authHeader = request.headers.get('Authorization');

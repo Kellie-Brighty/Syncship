@@ -138,8 +138,10 @@
 	}
 
 	async function checkDaemonStatus() {
+		const user = $currentUser;
+		if (!user) return;
 		try {
-			const heartbeatDoc = await getDoc(doc(db, 'daemon', 'heartbeat'));
+			const heartbeatDoc = await getDoc(doc(db, 'daemon', user.uid));
 			if (heartbeatDoc.exists()) {
 				const data = heartbeatDoc.data();
 				const ts = data.lastPing?.toDate();
@@ -155,11 +157,13 @@
 
 	let refreshingDaemon = $state(false);
 	async function refreshDaemonStatus() {
+		const user = $currentUser;
+		if (!user) return;
 		if (refreshingDaemon) return;
 		refreshingDaemon = true;
 		try {
 			serverStatus = 'checking';
-			await setDoc(doc(db, 'daemon', 'commands'), { action: 'refresh_stats', timestamp: Date.now() });
+			await setDoc(doc(db, 'daemon', user.uid), { action: 'refresh_stats', timestamp: Date.now() }, { merge: true });
 			// Give daemon 1.5s to respond and update heartbeat
 			setTimeout(async () => {
 				await checkDaemonStatus();
