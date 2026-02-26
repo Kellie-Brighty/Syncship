@@ -19,9 +19,10 @@
 	let domain = $state('');
 	let repo = $state('');
 	let branch = $state('main');
-	let projectType = $state<'static' | 'build'>('static');
+	let projectType = $state<'static' | 'build' | 'backend'>('static');
 	let buildCommand = $state('npm run build');
 	let outputDir = $state('.');
+	let startCommand = $state('node dist/index.js');
 	let loading = $state(false);
 	let error = $state('');
 
@@ -30,9 +31,15 @@
 		if (projectType === 'static') {
 			outputDir = '.';
 			buildCommand = '';
-		} else {
+			startCommand = '';
+		} else if (projectType === 'build') {
 			outputDir = 'dist';
 			buildCommand = 'npm run build';
+			startCommand = '';
+		} else {
+			outputDir = '.';
+			buildCommand = 'npm run build';
+			startCommand = 'node dist/index.js';
 		}
 	});
 
@@ -41,7 +48,7 @@
 		if (open) {
 			name = ''; domain = ''; repo = ''; branch = 'main';
 			projectType = 'static'; buildCommand = ''; outputDir = '.';
-			error = '';
+			startCommand = ''; error = '';
 		}
 	});
 
@@ -63,8 +70,10 @@
 				domain: domain.trim(),
 				repo: repo.trim(),
 				branch: branch.trim() || 'main',
+				siteType: projectType === 'backend' ? 'backend' : 'static',
 				buildCommand: projectType === 'static' ? '' : (buildCommand.trim() || 'npm run build'),
-				outputDir: outputDir.trim() || (projectType === 'static' ? '.' : 'dist'),
+				outputDir: projectType === 'backend' ? '.' : (outputDir.trim() || (projectType === 'static' ? '.' : 'dist')),
+				startCommand: projectType === 'backend' ? (startCommand.trim() || 'node dist/index.js') : undefined,
 				ownerId: user.uid
 			});
 			open = false;
@@ -124,7 +133,7 @@
 				<!-- Project type selector -->
 				<div class="border-t border-gray-100 pt-4 mt-4">
 					<p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Project Type</p>
-					<div class="grid grid-cols-2 gap-2">
+					<div class="grid grid-cols-3 gap-2">
 						<button
 							type="button"
 							onclick={() => projectType = 'static'}
@@ -134,7 +143,7 @@
 									: 'border-gray-200 text-gray-500 hover:border-gray-300'}"
 						>
 							<span class="font-medium block">Static HTML</span>
-							<span class="text-xs text-gray-400 block mt-0.5">No build step needed</span>
+							<span class="text-xs text-gray-400 block mt-0.5">No build step</span>
 						</button>
 						<button
 							type="button"
@@ -145,7 +154,18 @@
 									: 'border-gray-200 text-gray-500 hover:border-gray-300'}"
 						>
 							<span class="font-medium block">Framework</span>
-							<span class="text-xs text-gray-400 block mt-0.5">React, Vue, Svelte, etc.</span>
+							<span class="text-xs text-gray-400 block mt-0.5">React, Vue, etc.</span>
+						</button>
+						<button
+							type="button"
+							onclick={() => projectType = 'backend'}
+							class="rounded-lg border px-3 py-2.5 text-left text-sm transition-colors cursor-pointer
+								{projectType === 'backend'
+									? 'border-gray-900 bg-gray-50 text-gray-900'
+									: 'border-gray-200 text-gray-500 hover:border-gray-300'}"
+						>
+							<span class="font-medium block">Backend</span>
+							<span class="text-xs text-gray-400 block mt-0.5">Node, Python, etc.</span>
 						</button>
 					</div>
 				</div>
@@ -154,10 +174,15 @@
 				<div class="space-y-3">
 					<div class="grid grid-cols-2 gap-3">
 						<Input label="Branch" placeholder="main" bind:value={branch} />
-						<Input label="Output directory" placeholder={projectType === 'static' ? '.' : 'dist'} bind:value={outputDir} />
+						{#if projectType !== 'backend'}
+							<Input label="Output directory" placeholder={projectType === 'static' ? '.' : 'dist'} bind:value={outputDir} />
+						{/if}
 					</div>
-					{#if projectType === 'build'}
+					{#if projectType === 'build' || projectType === 'backend'}
 						<Input label="Build command" placeholder="npm run build" bind:value={buildCommand} />
+					{/if}
+					{#if projectType === 'backend'}
+						<Input label="Start command" placeholder="node dist/index.js" bind:value={startCommand} />
 					{/if}
 				</div>
 

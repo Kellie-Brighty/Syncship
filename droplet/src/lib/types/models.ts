@@ -15,8 +15,11 @@ export interface Site {
   domain: string;
   repo: string;
   branch: string;
+  siteType: 'static' | 'backend';
   buildCommand: string;
   outputDir: string;
+  startCommand?: string;
+  port?: number;
   status: 'live' | 'building' | 'failed' | 'pending';
   lastDeployAt: Date | null;
   ownerId: string;

@@ -37,6 +37,7 @@
 	let editBranch = $state('');
 	let editBuildCommand = $state('');
 	let editOutputDir = $state('');
+	let editStartCommand = $state('');
 	let saving = $state(false);
 
 	// Delete state
@@ -274,6 +275,7 @@
 		editBranch = site.branch;
 		editBuildCommand = site.buildCommand;
 		editOutputDir = site.outputDir;
+		editStartCommand = site.startCommand || '';
 		editing = true;
 	}
 
@@ -287,7 +289,8 @@
 				repo: editRepo.trim(),
 				branch: editBranch.trim(),
 				buildCommand: editBuildCommand.trim(),
-				outputDir: editOutputDir.trim()
+				outputDir: editOutputDir.trim(),
+				startCommand: editStartCommand.trim() || undefined
 			});
 			editing = false;
 		} catch (err) {
@@ -887,6 +890,9 @@
 						<Input label="Output directory" bind:value={editOutputDir} />
 					</div>
 					<Input label="Build command" placeholder="Leave empty for static sites" bind:value={editBuildCommand} />
+					{#if site?.siteType === 'backend'}
+						<Input label="Start command" placeholder="node dist/index.js" bind:value={editStartCommand} />
+					{/if}
 					<div class="flex gap-2 pt-2">
 						<Button onclick={saveEdits} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
 						<Button variant="outline" onclick={() => editing = false}>Cancel</Button>
@@ -896,10 +902,18 @@
 				<dl class="space-y-2.5 text-sm max-w-lg">
 					<div class="flex justify-between"><dt class="text-gray-500">Name</dt><dd class="text-gray-900">{site.name}</dd></div>
 					<div class="flex justify-between"><dt class="text-gray-500">Domain</dt><dd class="text-gray-900">{site.domain}</dd></div>
+					<div class="flex justify-between"><dt class="text-gray-500">Type</dt><dd class="text-gray-900"><span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {site.siteType === 'backend' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}">{site.siteType === 'backend' ? 'Backend' : 'Static'}</span></dd></div>
 					<div class="flex justify-between"><dt class="text-gray-500">Repository</dt><dd class="text-gray-900 font-mono text-xs">{site.repo}</dd></div>
 					<div class="flex justify-between"><dt class="text-gray-500">Branch</dt><dd class="text-gray-900">{site.branch}</dd></div>
 					<div class="flex justify-between"><dt class="text-gray-500">Build command</dt><dd class="text-gray-900 font-mono text-xs">{site.buildCommand || '— (static)'}</dd></div>
-					<div class="flex justify-between"><dt class="text-gray-500">Output dir</dt><dd class="text-gray-900 font-mono text-xs">{site.outputDir}</dd></div>
+					{#if site.siteType === 'backend'}
+						<div class="flex justify-between"><dt class="text-gray-500">Start command</dt><dd class="text-gray-900 font-mono text-xs">{site.startCommand || '—'}</dd></div>
+						{#if site.port}
+							<div class="flex justify-between"><dt class="text-gray-500">Port</dt><dd class="text-gray-900 font-mono text-xs">{site.port}</dd></div>
+						{/if}
+					{:else}
+						<div class="flex justify-between"><dt class="text-gray-500">Output dir</dt><dd class="text-gray-900 font-mono text-xs">{site.outputDir}</dd></div>
+					{/if}
 				</dl>
 			{/if}
 		</Card>

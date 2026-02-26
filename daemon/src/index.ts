@@ -129,11 +129,18 @@ async function boot() {
             domain: site.domain,
             repo: site.repo,
             branch: data.branch || site.branch,
+            siteType: site.siteType || 'static',
             buildCommand: site.buildCommand || '',
             outputDir: site.outputDir || '.',
+            startCommand: site.startCommand,
+            port: site.port,
             githubToken,
             envVars: site.envVars,
-            abortSignal: abortController.signal
+            abortSignal: abortController.signal,
+            onPortAssigned: async (port) => {
+              // Save the assigned port back to Firestore so it persists across redeploys
+              await updateDoc(doc(db, 'sites', data.siteId), { port });
+            }
           });
 
           unsubscribeCancel(); // Clean up listener

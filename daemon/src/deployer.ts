@@ -9,6 +9,7 @@ const execAsync = promisify(exec);
 
 const WEB_ROOT = process.env.WEB_ROOT || '/var/www';
 const REPOS_DIR = process.env.REPOS_DIR || '/opt/agencydroplet/repos';
+const APPS_DIR = process.env.APPS_DIR || '/opt/apps';
 
 interface SiteConfig {
   id: string;
@@ -16,12 +17,16 @@ interface SiteConfig {
   domain: string;
   repo: string;
   branch: string;
+  siteType: 'static' | 'backend';
   buildCommand: string;
   outputDir: string;
+  startCommand?: string;
+  port?: number;
   githubToken?: string;
   envVars?: string;
   abortSignal?: AbortSignal;
   onLog?: (logLine: string, fullLog: string) => Promise<void> | void;
+  onPortAssigned?: (port: number) => Promise<void> | void;
 }
 
 /**
@@ -202,11 +207,57 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
     await execStream(`rsync -a --delete ${sourceDir}/ ${siteDir}/`);
     await log(`Files deployed to ${siteDir}`, 1, 'Deploying files');
 
-    // 5. Generate Nginx config
+    // 5. Configure Nginx + optionally start PM2 process
     if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
-    await log('Configuring Nginx...', 1, 'Configuring Nginx');
-    const nginxConfig = generateNginxConfig(cleanDomain, siteDir);
-    writeFileSync(`/etc/nginx/sites-available/${cleanDomain}`, nginxConfig);
+
+    if (site.siteType === 'backend') {
+      // ── Backend deploy: PM2 + reverse proxy ──
+      const appDir = resolve(APPS_DIR, cleanDomain);
+      mkdirSync(appDir, { recursive: true });
+      await execStream(`rsync -a --delete ${repoDir}/ ${appDir}/`);
+      await log(`App files synced to ${appDir}`);
+
+      // Install deps in app dir if package.json exists
+      if (existsSync(resolve(appDir, 'package.json'))) {
+        await log('Installing production dependencies in app dir...');
+        const hasYarnLock = existsSync(resolve(appDir, 'yarn.lock'));
+        const hasPnpmLock = existsSync(resolve(appDir, 'pnpm-lock.yaml'));
+        const installCmd = hasPnpmLock ? 'pnpm install' : hasYarnLock ? 'yarn install' : 'npm install';
+        await execStream(`cd ${appDir} && ${installCmd}`, { timeout: 300000 });
+      }
+
+      // Re-inject env vars into the app directory
+      if (site.envVars) {
+        writeFileSync(resolve(appDir, '.env'), site.envVars);
+      }
+
+      // Allocate or reuse port
+      const port = site.port || await allocatePort();
+      await log(`Assigned port: ${port}`);
+
+      // Notify caller of the assigned port so it can be saved
+      if (site.onPortAssigned) {
+        await site.onPortAssigned(port);
+      }
+
+      // Stop existing PM2 process if running
+      await stopBackendProcess(cleanDomain);
+
+      // Start the backend process with PM2
+      const startCmd = site.startCommand || 'node dist/index.js';
+      await startBackendProcess(cleanDomain, appDir, startCmd, port, site.envVars);
+      await log(`🚀 Backend process started on port ${port}`, 1, 'Starting backend');
+
+      // Configure Nginx as reverse proxy
+      await log('Configuring Nginx reverse proxy...', 1, 'Configuring Nginx');
+      const nginxConfig = generateReverseProxyNginxConfig(cleanDomain, port);
+      writeFileSync(`/etc/nginx/sites-available/${cleanDomain}`, nginxConfig);
+    } else {
+      // ── Static deploy: serve files directly ──
+      await log('Configuring Nginx...', 1, 'Configuring Nginx');
+      const nginxConfig = generateNginxConfig(cleanDomain, siteDir);
+      writeFileSync(`/etc/nginx/sites-available/${cleanDomain}`, nginxConfig);
+    }
 
     // Enable site (symlink)
     const enabledPath = `/etc/nginx/sites-enabled/${cleanDomain}`;
@@ -294,6 +345,77 @@ function generateNginxConfig(domain: string, webRoot: string): string {
     add_header X-XSS-Protection "1; mode=block" always;
 }
 `;
+}
+
+function generateReverseProxyNginxConfig(domain: string, port: number): string {
+  return `server {
+    listen 80;
+    server_name ${domain};
+
+    location / {
+        proxy_pass http://127.0.0.1:${port};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+}
+`;
+}
+
+async function allocatePort(): Promise<number> {
+  const BASE_PORT = 3001;
+  try {
+    const { stdout } = await execAsync('pm2 jlist');
+    const processes = JSON.parse(stdout);
+    const usedPorts = new Set<number>();
+    for (const proc of processes) {
+      // Check env vars for PORT
+      const envPort = proc.pm2_env?.env?.PORT || proc.pm2_env?.PORT;
+      if (envPort) usedPorts.add(Number(envPort));
+    }
+    let port = BASE_PORT;
+    while (usedPorts.has(port)) port++;
+    return port;
+  } catch {
+    return BASE_PORT;
+  }
+}
+
+async function stopBackendProcess(domain: string): Promise<void> {
+  try {
+    await execAsync(`pm2 delete ${domain}`);
+  } catch {
+    // Process might not exist yet, that's fine
+  }
+}
+
+async function startBackendProcess(
+  domain: string,
+  appDir: string,
+  startCommand: string,
+  port: number,
+  envVars?: string
+): Promise<void> {
+  // Parse the start command into script + args
+  const parts = startCommand.split(' ');
+  const script = parts[0];
+  const args = parts.slice(1).join(' ');
+
+  // Build PM2 start command with PORT env var
+  const envStr = `PORT=${port}`;
+  const pm2Cmd = `cd ${appDir} && ${envStr} pm2 start ${script} --name ${domain} -- ${args}`;
+  await execAsync(pm2Cmd);
+  await execAsync('pm2 save');
 }
 
 function formatDuration(ms: number): string {
