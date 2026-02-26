@@ -318,8 +318,12 @@
 				<a href="/auth/login"    class="text-xs text-gray-400 hover:text-gray-700 transition-colors">Sign In</a>
 			</div>
 		</div>
-		<div class="mt-8 pt-6 border-t border-gray-200 text-center">
+		<div class="mt-8 pt-6 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
 			<p class="text-xs text-gray-400">© 2026 SyncShip. Built with ♥ for agencies.</p>
+			<div class="flex items-center gap-6">
+				<a href="/privacy" class="text-xs text-gray-400 hover:text-gray-700 transition-colors">Privacy Policy</a>
+				<a href="/terms" class="text-xs text-gray-400 hover:text-gray-700 transition-colors">Terms & Conditions</a>
+			</div>
 		</div>
 	</div>
 </footer>

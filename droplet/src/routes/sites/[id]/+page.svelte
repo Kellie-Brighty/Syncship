@@ -5,7 +5,7 @@
 	import {
 		Globe, ArrowLeft, ExternalLink, GitBranch, Clock, CheckCircle,
 		XCircle, Loader, Settings, Trash2, Rocket, Copy, Check, ChevronDown,
-		FileText, Upload, X
+		FileText, Upload, X, Key, FileUp, AlertTriangle, Info
 	} from 'lucide-svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
@@ -28,6 +28,7 @@
 	let dropletIp = $state<string | null>(null);
 	let dnsStatus = $state<'checking' | 'verified' | 'unverified' | null>(null);
 	let dnsError = $state<string | null>(null);
+	let hasGithubToken = $state<boolean | null>(null);
 
 	// Edit state
 	let editing = $state(false);
@@ -128,8 +129,18 @@
 		if (user && id) {
 			startListening(id, user.uid);
 			fetchDropletIp(user.uid);
+			checkGithubToken(user.uid);
 		}
 	});
+
+	async function checkGithubToken(userId: string) {
+		try {
+			const snap = await getDoc(doc(db, 'settings', userId));
+			hasGithubToken = snap.exists() && !!snap.data()?.githubToken;
+		} catch {
+			hasGithubToken = false;
+		}
+	}
 
 	async function fetchDropletIp(userId: string) {
 		try {
@@ -637,6 +648,31 @@
 					</div>
 				</dl>
 			</Card>
+		</div>
+
+		<!-- Guidance Banners -->
+		<div class="mt-4 space-y-3">
+			{#if !site.envVars}
+				<div class="flex items-start gap-3 rounded-lg bg-amber-50 border border-amber-200 p-4">
+					<FileUp class="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
+					<div class="flex-1">
+						<p class="text-sm font-medium text-amber-800">Environment variables not set</p>
+						<p class="text-xs text-amber-600 mt-1">If your project uses a <code class="bg-amber-100 px-1 rounded">.env</code> file, upload it in the <strong>Settings</strong> tab. You can drag & drop your file or paste the contents directly.</p>
+						<button onclick={() => activeTab = 'settings'} class="text-xs font-medium text-amber-700 hover:text-amber-900 underline mt-2 cursor-pointer">Go to Settings →</button>
+					</div>
+				</div>
+			{/if}
+
+			{#if hasGithubToken === false}
+				<div class="flex items-start gap-3 rounded-lg bg-blue-50 border border-blue-200 p-4">
+					<Key class="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
+					<div class="flex-1">
+						<p class="text-sm font-medium text-blue-800">GitHub token not connected</p>
+						<p class="text-xs text-blue-600 mt-1">If your repository is <strong>private</strong>, you need a GitHub Personal Access Token to allow SyncShip to pull your code. Generate one at <a href="https://github.com/settings/tokens" target="_blank" rel="noopener" class="underline">github.com/settings/tokens</a> with <code class="bg-blue-100 px-1 rounded">repo</code> scope.</p>
+						<a href="/settings" class="text-xs font-medium text-blue-700 hover:text-blue-900 underline mt-2 inline-block cursor-pointer">Add token in Settings →</a>
+					</div>
+				</div>
+			{/if}
 		</div>
 
 		<!-- Recent deployments preview -->
