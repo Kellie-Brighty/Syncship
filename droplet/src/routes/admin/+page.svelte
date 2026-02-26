@@ -312,20 +312,3 @@
 		</div>
 	</div>
 </div>
-
-	<!-- Sidebar / Info -->
-	<div class="space-y-6">
-		<Card class="p-6 bg-gray-900 text-white overflow-hidden relative">
-			<div class="relative z-10">
-				<h4 class="text-xs font-black uppercase tracking-widest text-indigo-400 mb-2">Admin Notice</h4>
-				<p class="text-sm text-gray-300">
-					Changes made here directly affect Firestore production data. Whitelisted users will bypass the monthly payment checks that will be implemented soon.
-				</p>
-			</div>
-			<!-- Subtle pattern bg -->
-			<div class="absolute inset-0 opacity-10 pointer-events-none">
-				<div class="h-full w-full" style="background-image: radial-gradient(white 1px, transparent 0); background-size: 20px 20px;"></div>
-			</div>
-		</Card>
-	</div>
-</div>
