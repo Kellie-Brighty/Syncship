@@ -14,7 +14,7 @@
 	import { getDeploymentsBySite, createDeployment, cancelDeployment } from '$lib/firebase/services/deployments';
 	import type { Site, Deployment } from '$lib/types/models';
 	import { get } from 'svelte/store';
-	import { doc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+	import { doc, collection, query, where, orderBy, onSnapshot, getDoc } from 'firebase/firestore';
 	import { db } from '$lib/firebase/client';
 	import { onDestroy } from 'svelte';
 	import confetti from 'canvas-confetti';
