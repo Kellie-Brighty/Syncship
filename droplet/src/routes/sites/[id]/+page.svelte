@@ -756,9 +756,38 @@
 								{/if}
 							</div>
 						{:else if deploy.status === 'building' || deploy.status === 'queued'}
-							<div class="flex items-center gap-2 text-sm text-gray-500 p-3">
-								<Loader class="h-3.5 w-3.5 animate-spin" />
-								Waiting for build output...
+							<div class="rounded-md bg-[#1e1e1e] p-6 border border-gray-800 shadow-inner relative overflow-hidden">
+								<div class="flex items-center gap-2 mb-4 pb-2 border-b border-gray-800/50">
+									<div class="flex gap-1.5">
+										<div class="w-3 h-3 rounded-full bg-red-500/50"></div>
+										<div class="w-3 h-3 rounded-full bg-yellow-500/50"></div>
+										<div class="w-3 h-3 rounded-full bg-green-500/50"></div>
+									</div>
+									<span class="text-[10px] font-mono text-gray-500 uppercase tracking-wider ml-2">Secure Build Environment</span>
+								</div>
+								
+								<!-- Simulated Terminal Area -->
+								<div class="font-mono text-[13px] leading-relaxed relative z-10">
+									<div class="flex items-center text-gray-500 mb-2">
+										<span class="text-green-500 mr-2">➜</span>
+										<span class="text-blue-400 mr-2">~</span>
+										<span class="text-gray-400">Initializing secure container...</span>
+									</div>
+									
+									<div class="flex items-center text-gray-300 animate-pulse">
+										<span class="text-purple-400 mr-2">⚡</span>
+										<span>{simulatedBuildSteps[simulatedStepIndex]}</span>
+										<span class="ml-1 inline-block w-2h-3 bg-gray-400 animate-pulse">_</span>
+									</div>
+
+									<!-- Indeterminate sleek progress bar -->
+									<div class="mt-6 w-full h-1 bg-gray-800 rounded-full overflow-hidden">
+										<div class="h-full bg-gradient-to-r from-transparent via-blue-500 to-purple-500 w-1/2 animate-[progress_1.5s_ease-in-out_infinite_alternate]"></div>
+									</div>
+								</div>
+								
+								<!-- Background ambient glow -->
+								<div class="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-blue-500/5 blur-[100px] rounded-full pointer-events-none"></div>
 							</div>
 						{:else}
 							<p class="text-sm text-gray-400">No build log available.</p>

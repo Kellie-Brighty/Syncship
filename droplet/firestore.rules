@@ -20,6 +20,11 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Settings collection — users can manage their personal settings (e.g., GitHub tokens)
+    match /settings/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
     // Sites collection — only the owner can CRUD their sites
     match /sites/{siteId} {
       allow read: if isAuth() && resource.data.ownerId == request.auth.uid;
