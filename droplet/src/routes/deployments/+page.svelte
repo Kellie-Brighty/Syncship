@@ -1,17 +1,26 @@
 <script lang="ts">
-	import Card from '$lib/components/ui/Card.svelte';
-	import { CodeSquare, ChevronDown, Loader } from 'lucide-svelte';
+	import Pagination from '$lib/components/ui/Pagination.svelte';
+	import { CodeSquare, ChevronDown, Loader, ArrowLeft } from 'lucide-svelte';
 	import { currentUser } from '$lib/stores/auth';
 	import type { Deployment } from '$lib/types/models';
-	import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+	import { collection, query, where, orderBy, onSnapshot, limit, getCountFromServer, type QueryDocumentSnapshot } from 'firebase/firestore';
 	import { db } from '$lib/firebase/client';
 	import { onDestroy } from 'svelte';
+	import { getPaginatedDeployments } from '$lib/firebase/services/deployments';
+	import { get } from 'svelte/store';
 
 	let deployments = $state<Deployment[]>([]);
 	let loading = $state(true);
 	let expandedDeployId = $state<string | null>(null);
 	let logContainer = $state<HTMLElement | null>(null);
 	let unsub: (() => void) | null = null;
+
+	// Pagination State
+	let currentPage = $state(1);
+	let pageSize = 10;
+	let totalItems = $state(0);
+	let pageSnapshots = new Map<number, QueryDocumentSnapshot | null>();
+	pageSnapshots.set(1, null); // Page 1 starts from null
 
 	// Simulated Loading Terminal State
 	const simulatedBuildSteps = [
@@ -58,39 +67,79 @@
 
 	$effect(() => {
 		const user = $currentUser;
-		if (user) startListening(user.uid);
+		if (user) {
+			fetchTotalCount(user.uid);
+			fetchPage(user.uid, 1);
+		}
 	});
 
-	onDestroy(() => unsub?.());
-
-	function startListening(uid: string) {
-		unsub?.();
-		const q = query(
-			collection(db, 'deployments'),
-			where('ownerId', '==', uid),
-			orderBy('createdAt', 'desc')
-		);
-		unsub = onSnapshot(q, (snap) => {
-			deployments = snap.docs.map(d => {
-				const data = d.data();
-				return {
-					id: d.id,
-					siteId: data.siteId,
-					siteName: data.siteName,
-					commit: data.commit,
-					message: data.message,
-					branch: data.branch,
-					status: data.status,
-					duration: data.duration || '—',
-					triggeredBy: data.triggeredBy,
-					ownerId: data.ownerId,
-					buildLog: data.buildLog || '',
-					createdAt: data.createdAt?.toDate() || new Date()
-				} as Deployment;
-			});
-			loading = false;
-		});
+	async function fetchTotalCount(uid: string) {
+		try {
+			const q = query(
+				collection(db, 'deployments'),
+				where('ownerId', '==', uid)
+			);
+			const snap = await getCountFromServer(q);
+			totalItems = snap.data().count;
+		} catch (err) {
+			console.error('Failed to fetch count:', err);
+		}
 	}
+
+	async function fetchPage(uid: string, page: number) {
+		loading = true;
+		try {
+			const lastVisible = pageSnapshots.get(page) || null;
+			const result = await getPaginatedDeployments({ ownerId: uid }, pageSize, lastVisible);
+			deployments = result.deployments;
+			
+			// Store the snapshot for the NEXT page
+			if (result.lastVisible) {
+				pageSnapshots.set(page + 1, result.lastVisible);
+			}
+			
+			// Auto-setup realtime for any "building" items on this page
+			setupRealtimeOnPage(uid);
+		} catch (err) {
+			console.error('Failed to fetch page:', err);
+		} finally {
+			loading = false;
+		}
+	}
+
+	function handlePageChange(page: number) {
+		const user = get(currentUser);
+		if (!user) return;
+		currentPage = page;
+		fetchPage(user.uid, page);
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	}
+
+	function setupRealtimeOnPage(uid: string) {
+		unsub?.();
+		// We listen to the most recent items generally, 
+		// but if we're on page 1, we definitely want fresh updates.
+		// For simplicity/performance, page 1 stays truly reactive.
+		if (currentPage === 1) {
+			const q = query(
+				collection(db, 'deployments'),
+				where('ownerId', '==', uid),
+				orderBy('createdAt', 'desc'),
+				limit(pageSize)
+			);
+			unsub = onSnapshot(q, (snap) => {
+				// Only update if we are still on page 1
+				if (currentPage === 1) {
+					deployments = snap.docs.map(d => {
+						const data = d.data();
+						return { id: d.id, ...data, createdAt: data.createdAt?.toDate() || new Date() } as Deployment;
+					});
+				}
+			});
+		}
+	}
+
+	onDestroy(() => unsub?.());
 
 	function timeAgo(date: Date): string {
 		const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -233,6 +282,14 @@
 				</div>
 			{/each}
 		</div>
+		
+		<Pagination 
+			{currentPage} 
+			{totalItems} 
+			{pageSize} 
+			onPageChange={handlePageChange}
+			{loading}
+		/>
 	</Card>
 {/if}
 

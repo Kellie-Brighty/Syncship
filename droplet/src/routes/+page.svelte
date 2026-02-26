@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Droplets, Rocket, Shield, Globe, GitBranch, Activity, Terminal, ChevronRight, Check } from 'lucide-svelte';
+	import AuthModal from '$lib/components/ui/AuthModal.svelte';
 
 	// ── Scroll reveal ─────────────────────────────────────────
 	function initScrollReveal() {
@@ -25,6 +26,15 @@
 	}
 
 	onMount(() => initScrollReveal());
+
+	// ── Auth Modal State ──────────────────────────────────────
+	let showAuthModal = $state(false);
+	let authMode = $state<'login' | 'register'>('login');
+
+	function openAuth(mode: 'login' | 'register') {
+		authMode = mode;
+		showAuthModal = true;
+	}
 </script>
 
 <svelte:head>
@@ -50,10 +60,18 @@
 			</nav>
 
 			<div class="flex items-center gap-3">
-				<a href="/auth/login" class="hidden sm:block text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Sign in</a>
-				<a href="/auth/register" class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-700 transition-colors shadow-sm">
+				<button 
+					onclick={() => openAuth('login')} 
+					class="hidden sm:block text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+				>
+					Sign in
+				</button>
+				<button 
+					onclick={() => openAuth('register')} 
+					class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-bold text-white hover:bg-gray-700 transition-colors shadow-sm cursor-pointer"
+				>
 					Get Started Free
-				</a>
+				</button>
 			</div>
 		</div>
 	</div>
@@ -77,10 +95,13 @@
 		</p>
 
 		<div class="reveal fade-up delay-300 mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-			<a href="/auth/register" class="cta-btn w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-8 py-3.5 text-base font-bold text-white hover:bg-gray-800 transition-all shadow-md">
+			<button 
+				onclick={() => openAuth('register')} 
+				class="cta-btn w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-8 py-3.5 text-base font-bold text-white hover:bg-gray-800 transition-all shadow-md cursor-pointer"
+			>
 				Start Deploying Free
 				<ChevronRight class="h-4 w-4" />
-			</a>
+			</button>
 			<a href="#how-it-works" onclick={smoothTo('how-it-works')} class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white/70 backdrop-blur px-8 py-3.5 text-base font-semibold text-gray-700 hover:bg-white transition-colors shadow-sm">
 				See How It Works
 			</a>
@@ -337,9 +358,12 @@
 		</div>
 		<h2 class="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">Ready to ship faster?</h2>
 		<p class="mt-4 text-gray-500 max-w-md mx-auto">Join agencies already using SyncShip to deploy client sites on their own terms.</p>
-		<a href="/auth/register" class="cta-btn mt-8 inline-flex items-center gap-2 rounded-xl bg-gray-900 px-10 py-3.5 text-base font-bold text-white hover:bg-gray-800 transition-all shadow-md">
+		<button 
+			onclick={() => openAuth('register')} 
+			class="cta-btn mt-8 inline-flex items-center gap-2 rounded-xl bg-gray-900 px-10 py-3.5 text-base font-bold text-white hover:bg-gray-800 transition-all shadow-md cursor-pointer"
+		>
 			Get Started Free <ChevronRight class="h-4 w-4" />
-		</a>
+		</button>
 	</div>
 </section>
 
@@ -358,7 +382,12 @@
 				<a href="#features"     onclick={smoothTo('features')}     class="text-xs text-gray-400 hover:text-gray-700 transition-colors">Features</a>
 				<a href="#how-it-works" onclick={smoothTo('how-it-works')} class="text-xs text-gray-400 hover:text-gray-700 transition-colors">How it works</a>
 				<a href="#pricing"      onclick={smoothTo('pricing')}      class="text-xs text-gray-400 hover:text-gray-700 transition-colors">Pricing</a>
-				<a href="/auth/login"    class="text-xs text-gray-400 hover:text-gray-700 transition-colors">Sign In</a>
+				<button 
+					onclick={() => openAuth('login')} 
+					class="text-xs text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
+				>
+					Sign In
+				</button>
 			</div>
 		</div>
 		<div class="mt-8 pt-6 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -370,6 +399,8 @@
 		</div>
 	</div>
 </footer>
+
+<AuthModal bind:show={showAuthModal} mode={authMode} />
 
 <style>
 	/* ── Smooth scroll ───────────── */

@@ -2,19 +2,20 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
+	import Pagination from '$lib/components/ui/Pagination.svelte';
 	import {
 		Globe, ArrowLeft, ExternalLink, GitBranch, Clock, CheckCircle,
 		XCircle, Loader, Settings, Trash2, Rocket, Copy, Check, ChevronDown,
-		FileText, Upload, X, Key, FileUp, AlertTriangle, Info
+		FileText, Upload, X, Key, FileUp, AlertTriangle, Info, ShieldCheck
 	} from 'lucide-svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { currentUser } from '$lib/stores/auth';
 	import { getSiteById, updateSite, deleteSite } from '$lib/firebase/services/sites';
-	import { getDeploymentsBySite, createDeployment, cancelDeployment } from '$lib/firebase/services/deployments';
+	import { createDeployment, cancelDeployment, getPaginatedDeployments } from '$lib/firebase/services/deployments';
 	import type { Site, Deployment } from '$lib/types/models';
 	import { get } from 'svelte/store';
-	import { doc, collection, query, where, orderBy, onSnapshot, getDoc } from 'firebase/firestore';
+	import { doc, collection, query, where, orderBy, onSnapshot, getDoc, updateDoc, deleteDoc, limit, getCountFromServer, type QueryDocumentSnapshot } from 'firebase/firestore';
 	import { db } from '$lib/firebase/client';
 	import { onDestroy } from 'svelte';
 	import confetti from 'canvas-confetti';
@@ -91,6 +92,13 @@
 	// Real-time listeners
 	let unsubSite: (() => void) | null = null;
 	let unsubDeploys: (() => void) | null = null;
+
+	// Pagination State for Site Deploys
+	let currentPage = $state(1);
+	let pageSize = 10;
+	let totalItems = $state(0);
+	let pageSnapshots = new Map<number, QueryDocumentSnapshot | null>();
+	pageSnapshots.set(1, null);
 
 	// Toast & celebration state
 	let showSuccessToast = $state(false);
@@ -250,32 +258,67 @@
 			loading = false;
 		});
 
-		// Real-time deployments listener
-		const deploymentsQuery = query(
-			collection(db, 'deployments'),
-			where('siteId', '==', id),
-			where('ownerId', '==', userId),
-			orderBy('createdAt', 'desc')
-		);
-		unsubDeploys = onSnapshot(deploymentsQuery, (snap) => {
-			deployments = snap.docs.map(d => {
-				const data = d.data();
-				return {
-					id: d.id,
-					siteId: data.siteId,
-					siteName: data.siteName,
-					commit: data.commit,
-					message: data.message,
-					branch: data.branch,
-					status: data.status,
-					duration: data.duration || '—',
-					triggeredBy: data.triggeredBy,
-					ownerId: data.ownerId,
-					buildLog: data.buildLog || '',
-					createdAt: data.createdAt?.toDate() || new Date()
-				} as Deployment;
+		fetchTotalSiteCount(id, userId);
+		fetchSitePage(id, userId, 1);
+	}
+
+	async function fetchTotalSiteCount(siteId: string, uid: string) {
+		try {
+			const q = query(
+				collection(db, 'deployments'),
+				where('siteId', '==', siteId),
+				where('ownerId', '==', uid)
+			);
+			const snap = await getCountFromServer(q);
+			totalItems = snap.data().count;
+		} catch (err) {
+			console.error('Failed to fetch site deploy count:', err);
+		}
+	}
+
+	async function fetchSitePage(siteId: string, uid: string, page: number) {
+		try {
+			const lastVisible = pageSnapshots.get(page) || null;
+			const result = await getPaginatedDeployments({ siteId, ownerId: uid }, pageSize, lastVisible);
+			deployments = result.deployments;
+			
+			if (result.lastVisible) {
+				pageSnapshots.set(page + 1, result.lastVisible);
+			}
+			
+			setupSiteRealtimeOnPage(siteId, uid);
+		} catch (err) {
+			console.error('Failed to fetch site page:', err);
+		}
+	}
+
+	function handlePageChange(page: number) {
+		const user = get(currentUser);
+		if (!user || !site) return;
+		currentPage = page;
+		fetchSitePage(site.id, user.uid, page);
+	}
+
+	function setupSiteRealtimeOnPage(siteId: string, uid: string) {
+		unsubDeploys?.();
+		// Stay reactive on page 1 for any "building" updates
+		if (currentPage === 1) {
+			const deploymentsQuery = query(
+				collection(db, 'deployments'),
+				where('siteId', '==', siteId),
+				where('ownerId', '==', uid),
+				orderBy('createdAt', 'desc'),
+				limit(pageSize)
+			);
+			unsubDeploys = onSnapshot(deploymentsQuery, (snap) => {
+				if (currentPage === 1) {
+					deployments = snap.docs.map(d => {
+						const data = d.data();
+						return { id: d.id, ...data, createdAt: data.createdAt?.toDate() || new Date() } as Deployment;
+					});
+				}
 			});
-		});
+		}
 	}
 
 	function startEditing() {
@@ -901,6 +944,14 @@
 						</div>
 					{/each}
 				</div>
+				
+				<Pagination 
+					{currentPage} 
+					{totalItems} 
+					{pageSize} 
+					onPageChange={handlePageChange}
+					loading={loading}
+				/>
 			</Card>
 		{/if}
 
