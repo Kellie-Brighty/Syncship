@@ -14,7 +14,7 @@ export async function GET({ url }: RequestEvent) {
   try {
     // Use Google Public DNS API for consistent results across all environments
     const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(cleanDomain)}&type=A`);
-    if (!res.ok) throw new Error('DNS lookup failed');
+    if (!res.ok) throw new Error('DNS lookup failedddd');
 
     const data = await res.json();
 
