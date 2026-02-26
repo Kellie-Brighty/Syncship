@@ -43,20 +43,22 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
     hideCursor: true
   }, cliProgress.Presets.shades_classic);
 
-  progressBar.start(7, 0, { stepName: 'Initializing...' });
+  const totalSteps = site.siteType === 'backend' ? 9 : 7;
+
+  progressBar.start(totalSteps, 0, { stepName: 'Initializing...' });
   let currentStep = 0;
 
   async function log(msg: string, stepIncrement = 0, stepName?: string) {
     if (stepIncrement > 0) {
       currentStep += stepIncrement;
-      progressBar.update(currentStep, { stepName: stepName || msg });
+      progressBar.update(Math.min(currentStep, totalSteps), { stepName: stepName || msg });
       
       // Compute text-based progress bar to save to the logs database for the UI terminal
-      const pct = Math.round((currentStep / 7) * 100);
-      const filledLength = Math.round((currentStep / 7) * 20);
-      const emptyLength = 20 - filledLength;
+      const pct = Math.min(Math.round((currentStep / totalSteps) * 100), 100);
+      const filledLength = Math.min(Math.round((currentStep / totalSteps) * 20), 20);
+      const emptyLength = Math.max(20 - filledLength, 0);
       const barStr = '█'.repeat(filledLength) + '░'.repeat(emptyLength);
-      logs.push(`\n[📦 ${barStr}] ${currentStep}/7 | ${stepName || msg} (${pct}%)\n`);
+      logs.push(`\n[📦 ${barStr}] ${currentStep}/${totalSteps} | ${stepName || msg} (${pct}%)\n`);
     } else if (stepName) {
       progressBar.update(currentStep, { stepName });
     }
@@ -300,7 +302,7 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
       await log(`SSL warning: ${sslErr.message} (site will still work on HTTP)`);
     }
 
-    progressBar.update(7, { stepName: 'Done' });
+    progressBar.update(totalSteps, { stepName: 'Done' });
     progressBar.stop();
     const duration = formatDuration(Date.now() - startTime);
     await log(`✅ Deployed successfully in ${duration}`);
