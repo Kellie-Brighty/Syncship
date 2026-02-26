@@ -210,8 +210,8 @@
 				<div class="mt-4">
 					<label class="block text-xs font-medium leading-6 text-gray-900">Installation Command</label>
 					<div class="mt-1 flex rounded-md shadow-sm">
-						<div class="relative flex flex-grow items-stretch focus-within:z-10">
-							<pre class="block w-full rounded-none rounded-l-md border-0 py-2.5 pl-3 text-gray-900 ring-1 ring-inset ring-gray-300 bg-gray-50 sm:text-sm sm:leading-6 font-mono overflow-x-auto whitespace-pre">curl -sL https://raw.githubusercontent.com/Kellie-Brighty/Syncship/main/droplet/static/install.sh | bash -s -- --key {$currentUser?.uid}</pre>
+						<div class="relative flex flex-grow items-stretch focus-within:z-10 min-w-0">
+							<pre class="block w-full rounded-none rounded-l-md border-0 py-2.5 pl-3 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 bg-gray-50 sm:text-sm sm:leading-6 font-mono whitespace-pre-wrap break-all sm:break-normal">curl -sL https://raw.githubusercontent.com/Kellie-Brighty/Syncship/main/droplet/static/install.sh | bash -s -- --key {$currentUser?.uid}</pre>
 						</div>
 						<button 
 							type="button" 
