@@ -268,12 +268,12 @@
 				<div class="absolute top-4 right-4 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white uppercase tracking-wider">
 					Founding Member
 				</div>
-				<p class="text-xs font-bold uppercase tracking-widest text-gray-400">Lifetime Access</p>
+				<p class="text-xs font-bold uppercase tracking-widest text-indigo-400">Temporary Lifetime Access Fee</p>
 				<div class="mt-5 flex items-end gap-2">
-					<span class="text-5xl font-black text-white">$59</span>
-					<span class="text-gray-400 mb-1.5 text-sm line-through">$19/mo</span>
+					<span class="text-5xl font-black text-white">$2</span>
+					<span class="text-gray-400 mb-1.5 text-sm line-through">$59</span>
 				</div>
-				<p class="mt-2 text-sm text-gray-400">One-time payment. Full access. Forever.</p>
+				<p class="mt-2 text-sm text-gray-400">Limited time promotion. Full lifetime access.</p>
 
 				<!-- Urgency bar -->
 				<div class="mt-5 rounded-xl bg-white/5 border border-white/10 px-4 py-3">
