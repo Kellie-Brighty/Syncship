@@ -23,11 +23,15 @@ export async function ensureUserProfile(firebaseUser: FirebaseUser): Promise<voi
   if (!snapshot.exists()) {
     // Check for pending plans from Polar
     let plan = 'free';
+    let isWhitelisted = firebaseUser.email === 'kelliebrighty@gmail.com';
+    
     if (firebaseUser.email) {
       const pendingRef = doc(db, 'pending_plans', firebaseUser.email.toLowerCase());
       const pendingSnap = await getDoc(pendingRef);
       if (pendingSnap.exists()) {
-        plan = pendingSnap.data().plan || 'free';
+        const pData = pendingSnap.data();
+        plan = pData.plan || 'free';
+        if (pData.isWhitelisted) isWhitelisted = true;
         await deleteDoc(pendingRef);
       }
     }
@@ -40,7 +44,7 @@ export async function ensureUserProfile(firebaseUser: FirebaseUser): Promise<voi
       photoURL: firebaseUser.photoURL || null,
       role: firebaseUser.email === 'kelliebrighty@gmail.com' ? 'admin' : 'user',
       plan: plan,
-      isWhitelisted: firebaseUser.email === 'kelliebrighty@gmail.com',
+      isWhitelisted: isWhitelisted,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
