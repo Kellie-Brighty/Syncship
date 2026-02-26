@@ -89,7 +89,7 @@
 	$effect(() => {
 		const user = $currentUser;
 		const id = $page.params.id;
-		if (user && id) startListening(id);
+		if (user && id) startListening(id, user.uid);
 	});
 
 	// Auto-expand the currently building deployment row
@@ -130,7 +130,7 @@
 		unsubDeploys?.();
 	});
 
-	function startListening(id: string) {
+	function startListening(id: string, userId: string) {
 		// Clean up old listeners
 		unsubSite?.();
 		unsubDeploys?.();
@@ -162,6 +162,7 @@
 		const deploymentsQuery = query(
 			collection(db, 'deployments'),
 			where('siteId', '==', id),
+			where('ownerId', '==', userId),
 			orderBy('createdAt', 'desc')
 		);
 		unsubDeploys = onSnapshot(deploymentsQuery, (snap) => {
