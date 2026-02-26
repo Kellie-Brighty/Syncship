@@ -51,6 +51,36 @@
 	// Expand state for deployment logs
 	let expandedDeployId = $state<string | null>(null);
 
+	// Simulated Loading Terminal State
+	const simulatedBuildSteps = [
+		'Cloning repository...',
+		'Resolving packages...',
+		'Fetching dependencies...',
+		'Linking node_modules...',
+		'Building application...',
+		'Compiling assets...',
+		'Optimizing chunks...',
+		'Generating static HTML...',
+		'Finalizing deployment...'
+	];
+	let simulatedStepIndex = $state(0);
+	
+	$effect(() => {
+		// Only run the interval if we actually have active deployments expanding the placeholder
+		const needsSimulation = expandedDeployId && deployments.some(d => d.id === expandedDeployId && !d.buildLog && (d.status === 'building' || d.status === 'queued'));
+		
+		if (needsSimulation) {
+			const interval = setInterval(() => {
+				if (simulatedStepIndex < simulatedBuildSteps.length - 1) {
+					simulatedStepIndex++;
+				}
+			}, 3500); // Change simulated text every 3.5 seconds
+			return () => clearInterval(interval);
+		} else {
+			simulatedStepIndex = 0; // Reset when closed or finished
+		}
+	});
+
 	// Real-time listeners
 	let unsubSite: (() => void) | null = null;
 	let unsubDeploys: (() => void) | null = null;
@@ -382,6 +412,11 @@
 		from { opacity: 0; transform: translateY(1rem) scale(0.95); }
 		to   { opacity: 1; transform: translateY(0) scale(1); }
 	}
+	/* Infinite scanning progress bar animation for the simulated terminal */
+	@keyframes progress {
+		0% { transform: translateX(-100%); }
+		100% { transform: translateX(200%); }
+	}
 </style>
 
 <svelte:head>
@@ -606,9 +641,38 @@
 											{/if}
 										</div>
 									{:else if deploy.status === 'building' || deploy.status === 'queued'}
-										<div class="flex items-center gap-2 text-sm text-gray-500 p-3">
-											<Loader class="h-3.5 w-3.5 animate-spin" />
-											Waiting for build output...
+										<div class="rounded-md bg-[#1e1e1e] p-6 border border-gray-800 shadow-inner relative overflow-hidden">
+											<div class="flex items-center gap-2 mb-4 pb-2 border-b border-gray-800/50">
+												<div class="flex gap-1.5">
+													<div class="w-3 h-3 rounded-full bg-red-500/50"></div>
+													<div class="w-3 h-3 rounded-full bg-yellow-500/50"></div>
+													<div class="w-3 h-3 rounded-full bg-green-500/50"></div>
+												</div>
+												<span class="text-[10px] font-mono text-gray-500 uppercase tracking-wider ml-2">Secure Build Environment</span>
+											</div>
+											
+											<!-- Simulated Terminal Area -->
+											<div class="font-mono text-[13px] leading-relaxed relative z-10">
+												<div class="flex items-center text-gray-500 mb-2">
+													<span class="text-green-500 mr-2">➜</span>
+													<span class="text-blue-400 mr-2">~</span>
+													<span class="text-gray-400">Initializing secure container...</span>
+												</div>
+												
+												<div class="flex items-center text-gray-300 animate-pulse">
+													<span class="text-purple-400 mr-2">⚡</span>
+													<span>{simulatedBuildSteps[simulatedStepIndex]}</span>
+													<span class="ml-1 inline-block w-2h-3 bg-gray-400 animate-pulse">_</span>
+												</div>
+
+												<!-- Indeterminate sleek progress bar -->
+												<div class="mt-6 w-full h-1 bg-gray-800 rounded-full overflow-hidden">
+													<div class="h-full bg-gradient-to-r from-transparent via-blue-500 to-purple-500 w-1/2 animate-[progress_1.5s_ease-in-out_infinite_alternate]"></div>
+												</div>
+											</div>
+											
+											<!-- Background ambient glow -->
+											<div class="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-blue-500/5 blur-[100px] rounded-full pointer-events-none"></div>
 										</div>
 									{/if}
 								</div>
