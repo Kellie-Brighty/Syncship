@@ -15,7 +15,7 @@ service cloud.firestore {
 
     // Helper: check if the request is coming from the user's specific remote daemon
     function isDaemonFor(uid) {
-      return isAuth() && request.auth.token.email == 'daemon-' + uid + '@syncship.ink';
+      return isAuth() && request.auth.token.email.lower() == ('daemon-' + uid + '@syncship.ink').lower();
     }
 
     // Users collection — users can only read/write their own doc
@@ -25,9 +25,10 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Settings collection — users can manage their personal settings (e.g., GitHub tokens)
+    // Settings collection — users can manage their personal settings (e.g., GitHub tokens), daemon can read
     match /settings/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId) || isDaemonFor(userId);
+      allow write: if isOwner(userId);
     }
 
     // Sites collection — only the owner can CRUD their sites, daemon can update status
