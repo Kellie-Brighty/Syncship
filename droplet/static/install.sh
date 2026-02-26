@@ -29,7 +29,7 @@ echo ""
 # 2. Update System & Install Core Dependencies
 echo "📦 Installing system dependencies (Nginx, Git, Certbot)..."
 sudo apt-get update -y > /dev/null
-sudo apt-get install -y curl git nginx python3-certbot-nginx rsync build-essential > /dev/null
+sudo apt-get install -y curl git nginx python3-certbot-nginx rsync build-essential unzip > /dev/null
 
 # 3. Install Node.js (v20)
 if ! command -v node &> /dev/null; then
