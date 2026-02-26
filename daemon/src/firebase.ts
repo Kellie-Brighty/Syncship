@@ -31,8 +31,9 @@ export async function authenticateDaemon() {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, token);
     console.log(`✅ Daemon securely authenticated as: ${userCredential.user.email}`);
-    // Return the actual user UID to use as the ownerId filter
-    return userCredential.user.uid;
+    // Extract the actual user UID from "daemon-UID@syncship.ink"
+    const ownerUid = email.replace('daemon-', '').replace('@syncship.ink', '');
+    return ownerUid;
   } catch (err: any) {
     console.error('❌ Daemon Authentication Failed!');
     console.error(`   Error: ${err.message}`);
