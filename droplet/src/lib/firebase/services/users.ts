@@ -2,6 +2,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  deleteDoc,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '$lib/firebase/client';
@@ -20,22 +21,38 @@ export async function ensureUserProfile(firebaseUser: FirebaseUser): Promise<voi
   const snapshot = await getDoc(ref);
 
   if (!snapshot.exists()) {
+    // Check for pending plans from Polar
+    let plan = 'free';
+    if (firebaseUser.email) {
+      const pendingRef = doc(db, 'pending_plans', firebaseUser.email.toLowerCase());
+      const pendingSnap = await getDoc(pendingRef);
+      if (pendingSnap.exists()) {
+        plan = pendingSnap.data().plan || 'free';
+        await deleteDoc(pendingRef);
+      }
+    }
+
     // First-time user — create the document
     await setDoc(ref, {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
       displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
       photoURL: firebaseUser.photoURL || null,
-      role: 'admin',
+      role: firebaseUser.email === 'kelliebrighty@gmail.com' ? 'admin' : 'user',
+      plan: plan,
+      isWhitelisted: firebaseUser.email === 'kelliebrighty@gmail.com',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
   } else {
     // Returning user — update last login info
+    const data = snapshot.data();
     await setDoc(ref, {
       email: firebaseUser.email,
-      displayName: firebaseUser.displayName || snapshot.data().displayName,
-      photoURL: firebaseUser.photoURL || snapshot.data().photoURL || null,
+      displayName: firebaseUser.displayName || data.displayName,
+      photoURL: firebaseUser.photoURL || data.photoURL || null,
+      role: firebaseUser.email === 'kelliebrighty@gmail.com' ? 'admin' : (data.role || 'user'),
+      isWhitelisted: firebaseUser.email === 'kelliebrighty@gmail.com' ? true : (data.isWhitelisted || false),
       updatedAt: serverTimestamp()
     }, { merge: true });
   }

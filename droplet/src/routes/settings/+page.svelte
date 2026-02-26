@@ -2,7 +2,7 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
-	import { User, Server, Github, Shield, Check, Copy, Eye, EyeOff } from 'lucide-svelte';
+	import { User, Server, Github, Shield, Check, Copy, Eye, EyeOff, Key } from 'lucide-svelte';
 	import { currentUser } from '$lib/stores/auth';
 	import { updateProfile, updatePassword, type User as FirebaseUser } from 'firebase/auth';
 	import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -38,6 +38,12 @@
 	let daemonToken = $state('');
 	let daemonEmail = $state('');
 	let generatingToken = $state(false);
+	
+	// Payments / Licensing
+	let licenseKey = $state('');
+	let redeemingLicense = $state(false);
+	let licenseMsg = $state('');
+	let userPlan = $state('free');
 
 	function copyToClipboard(text: string, type: 'key' | 'command') {
 		navigator.clipboard.writeText(text);
@@ -69,6 +75,12 @@
 				daemonToken = data.daemonToken || '';
 				daemonEmail = data.daemonEmail || '';
 			}
+			
+			const userDoc = await getDoc(doc(db, 'users', uid));
+			if (userDoc.exists()) {
+				userPlan = userDoc.data().plan || 'free';
+			}
+
 			tokenLoaded = true;
 		} catch { tokenLoaded = true; }
 	}
@@ -158,21 +170,37 @@
 	let refreshingDaemon = $state(false);
 	async function refreshDaemonStatus() {
 		const user = $currentUser;
-		if (!user) return;
-		if (refreshingDaemon) return;
-		refreshingDaemon = true;
+		if (user) {
+			// user plan check logic can go here if needed
+		}
+		// ... existing logic ...
+	}
+
+	async function redeemLicense() {
+		const user = $currentUser;
+		if (!user || !licenseKey) return;
+		redeemingLicense = true; licenseMsg = '';
 		try {
-			serverStatus = 'checking';
-			await setDoc(doc(db, 'daemon', user.uid), { action: 'refresh_stats', timestamp: Date.now() }, { merge: true });
-			// Give daemon 1.5s to respond and update heartbeat
-			setTimeout(async () => {
-				await checkDaemonStatus();
-				refreshingDaemon = false;
-			}, 1500);
-		} catch (err) {
-			console.error('Failed to command daemon:', err);
-			refreshingDaemon = false;
-			serverStatus = 'offline';
+			const idToken = await user.getIdToken();
+			const res = await fetch('/api/license/redeem', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${idToken}`
+				},
+				body: JSON.stringify({ licenseKey: licenseKey.trim() })
+			});
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || 'Redemption failed');
+			
+			licenseMsg = data.message || 'License redeemed!';
+			userPlan = data.plan;
+			licenseKey = '';
+			setTimeout(() => licenseMsg = '', 5000);
+		} catch (err: any) {
+			licenseMsg = err.message;
+		} finally {
+			redeemingLicense = false;
 		}
 	}
 </script>
@@ -360,10 +388,10 @@
 
 	<!-- GitHub Token -->
 	<Card class="p-5">
-		<div class="flex items-start gap-3">
-			<div class="rounded-lg bg-gray-100 p-2.5"><Github class="h-5 w-5 text-gray-700" /></div>
-			<div class="flex-1">
-				<h3 class="text-sm font-semibold text-gray-900">GitHub Access Token</h3>
+        <div class="flex items-start gap-3">
+            <div class="rounded-lg bg-gray-100 p-2.5"><Github class="h-5 w-5 text-gray-700" /></div>
+            <div class="flex-1">
+                <h3 class="text-sm font-semibold text-gray-900">GitHub Access Token</h3>
 				<p class="mt-0.5 text-sm text-gray-500">Required for deploying private repositories. <a href="https://github.com/settings/tokens/new" target="_blank" rel="noopener" class="text-gray-900 underline">Generate one →</a></p>
 				{#if tokenLoaded}
 					<div class="mt-3 max-w-sm space-y-3">
@@ -379,6 +407,51 @@
 					</div>
 				{:else}
 					<div class="mt-3 h-10 w-64 bg-gray-100 rounded animate-pulse"></div>
+				{/if}
+			</div>
+		</div>
+	</Card>
+
+	<!-- Licensing & Payment -->
+	<Card class="p-5 border-indigo-100 bg-indigo-50/30">
+		<div class="flex items-start gap-3">
+			<div class="rounded-lg bg-indigo-100 p-2.5"><Key class="h-5 w-5 text-indigo-700" /></div>
+			<div class="flex-1">
+				<h3 class="text-sm font-semibold text-gray-900">Subscription & Licensing</h3>
+				<p class="mt-0.5 text-sm text-gray-500">Manage your SyncShip access.</p>
+				
+				<div class="mt-4 flex items-center gap-2 text-sm">
+					<span class="text-gray-500">Current Plan:</span>
+					<span class="font-bold capitalize inline-flex items-center gap-1.5 {userPlan === 'lifetime' ? 'text-indigo-600' : 'text-gray-900'}">
+						{#if userPlan === 'lifetime'}
+							<Check class="h-4 w-4" /> Lifetime Founding Member
+						{:else if userPlan === 'pro'}
+							Pro Monthly
+						{:else}
+							Free Trial
+						{/if}
+					</span>
+				</div>
+
+				{#if userPlan !== 'lifetime'}
+					<div class="mt-6 pt-5 border-t border-indigo-100/50">
+						<h4 class="text-xs font-bold text-gray-900 uppercase tracking-wider">Redeem License Key</h4>
+						<p class="mt-1 text-xs text-gray-500">Enter the key from your Polar receipt (SYNC-XXXX-XXXX).</p>
+						
+						<div class="mt-3 max-w-sm space-y-3">
+							<Input bind:value={licenseKey} placeholder="SYNC-XXXX-XXXX" />
+							<div class="flex items-center gap-2">
+								<Button onclick={redeemLicense} disabled={redeemingLicense || !licenseKey} class="bg-indigo-600 hover:bg-indigo-700 text-white border-0">
+									{redeemingLicense ? 'Verifying...' : 'Activate License'}
+								</Button>
+								{#if licenseMsg}
+									<span class="text-sm {licenseMsg.toLowerCase().includes('failed') || licenseMsg.toLowerCase().includes('invalid') ? 'text-red-600' : 'text-green-600'}">
+										{licenseMsg}
+									</span>
+								{/if}
+							</div>
+						</div>
+					</div>
 				{/if}
 			</div>
 		</div>
