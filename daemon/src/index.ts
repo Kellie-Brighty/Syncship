@@ -4,7 +4,14 @@ import { FieldValue } from 'firebase-admin/firestore';
 import os from 'os';
 import * as osutils from 'os-utils';
 
-console.log('🚀 AgencyDroplet Daemon starting...');
+const SYNC_USER_ID = process.env.SYNC_USER_ID as string;
+if (!SYNC_USER_ID) {
+  console.error('❌ FATAL: SYNC_USER_ID environment variable is missing.');
+  console.error('Please pass your Server Key when running the daemon.');
+  process.exit(1);
+}
+
+console.log(`🚀 AgencyDroplet Daemon starting for User: ${SYNC_USER_ID}...`);
 
 // Heartbeat: write to Firestore every 5s so dashboard knows we're alive and has fresh stats
 function sendHeartbeat() {
@@ -16,13 +23,13 @@ function sendHeartbeat() {
       const memPercent = (usedRam / totalRam) * 100;
 
       // 1. Keep the daemon status alive
-      await db.collection('daemon').doc('heartbeat').set({
+      await db.collection('daemon').doc(SYNC_USER_ID).set({
         lastPing: FieldValue.serverTimestamp(),
         status: 'online'
       }, { merge: true });
 
       // 2. Stream live OS stats for the dashboard charts
-      await db.collection('serverStats').doc('live').set({
+      await db.collection('serverStats').doc(SYNC_USER_ID).set({
         timestamp: FieldValue.serverTimestamp(),
         cpu: cpuPercent * 100,
         memory: memPercent,
@@ -38,7 +45,7 @@ function sendHeartbeat() {
 sendHeartbeat(); // One-time ping on startup
 
 // Listen for commands from the dashboard (e.g., refresh server stats)
-db.collection('daemon').doc('commands').onSnapshot(async (snap) => {
+db.collection('daemon').doc(SYNC_USER_ID).onSnapshot(async (snap) => {
   const data = snap.data();
   if (data && data.action === 'refresh_stats') {
     console.log('🔄 Dashboard requested fresh stats');
@@ -55,6 +62,7 @@ function startDeploymentListener() {
 
   // Watch for queued deployments
   deploymentsRef
+    .where('ownerId', '==', SYNC_USER_ID)
     .where('status', '==', 'queued')
     .onSnapshot(async (snapshot) => {
       for (const change of snapshot.docChanges()) {

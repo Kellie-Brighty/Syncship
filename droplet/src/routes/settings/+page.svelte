@@ -26,9 +26,25 @@
 	let tokenLoaded = $state(false);
 	let showToken = $state(false);
 
-	// Server status
+	// Server Status
 	let serverStatus = $state<'checking' | 'online' | 'offline'>('checking');
 	let lastHeartbeat = $state<Date | null>(null);
+
+	// Server Key UI
+	let showServerKey = $state(false);
+	let copiedKey = $state(false);
+	let copiedCommand = $state(false);
+
+	function copyToClipboard(text: string, type: 'key' | 'command') {
+		navigator.clipboard.writeText(text);
+		if (type === 'key') {
+			copiedKey = true;
+			setTimeout(() => copiedKey = false, 2000);
+		} else {
+			copiedCommand = true;
+			setTimeout(() => copiedCommand = false, 2000);
+		}
+	}
 
 	// Load user data
 	$effect(() => {
@@ -182,6 +198,70 @@
 			</div>
 		</Card>
 	{/if}
+
+	<!-- Server Connection Key -->
+	<Card class="p-5">
+		<div class="flex items-start gap-3">
+			<div class="rounded-lg bg-gray-100 p-2.5"><Server class="h-5 w-5 text-gray-700" /></div>
+			<div class="flex-1 min-w-0">
+				<h3 class="text-sm font-semibold text-gray-900">Server Connection Key</h3>
+				<p class="mt-0.5 text-sm text-gray-500">Run this command on your Ubuntu 20.04/22.04 server to link it to SyncShip.</p>
+				
+				<div class="mt-4">
+					<label class="block text-xs font-medium leading-6 text-gray-900">Installation Command</label>
+					<div class="mt-1 flex rounded-md shadow-sm">
+						<div class="relative flex flex-grow items-stretch focus-within:z-10">
+							<pre class="block w-full rounded-none rounded-l-md border-0 py-2.5 pl-3 text-gray-900 ring-1 ring-inset ring-gray-300 bg-gray-50 sm:text-sm sm:leading-6 font-mono overflow-x-auto whitespace-pre">curl -sL https://raw.githubusercontent.com/Kellie-Brighty/Syncship/main/droplet/static/install.sh | bash -s -- --key {$currentUser?.uid}</pre>
+						</div>
+						<button 
+							type="button" 
+							class="relative -ml-px inline-flex shrink-0 items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 cursor-pointer"
+							onclick={() => copyToClipboard(`curl -sL https://raw.githubusercontent.com/Kellie-Brighty/Syncship/main/droplet/static/install.sh | bash -s -- --key ${$currentUser?.uid}`, 'command')}
+						>
+							{#if copiedCommand}
+								<Check class="h-4 w-4 text-green-600" /> <span class="text-green-600">Copied</span>
+							{:else}
+								<Copy class="h-4 w-4 text-gray-400" /> Copy
+							{/if}
+						</button>
+					</div>
+					<p class="mt-2 text-xs text-gray-500">This script will automatically install Nginx, Node.js, Certbot, and the SyncShip Daemon.</p>
+				</div>
+
+				<div class="mt-6 pt-5 border-t border-gray-100">
+					<label class="block text-xs font-medium leading-6 text-gray-900">Raw Server Key (Keep Secret)</label>
+					<div class="mt-1 flex rounded-md shadow-sm max-w-sm">
+						<div class="relative flex flex-grow items-stretch focus-within:z-10">
+							<input 
+								type={showServerKey ? 'text' : 'password'} 
+								readonly 
+								value={$currentUser?.uid || ''} 
+								class="block w-full rounded-none rounded-l-md border-0 py-1.5 pl-3 text-gray-900 ring-1 ring-inset ring-gray-300 bg-gray-50 focus:ring-2 focus:ring-inset focus:ring-gray-900 sm:text-sm sm:leading-6 font-mono" 
+							/>
+						</div>
+						<button type="button" class="relative -ml-px inline-flex items-center gap-x-1.5 px-3 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 cursor-pointer" onclick={() => showServerKey = !showServerKey}>
+							{#if showServerKey}
+								<EyeOff class="h-4 w-4 text-gray-400" />
+							{:else}
+								<Eye class="h-4 w-4 text-gray-400" />
+							{/if}
+						</button>
+						<button 
+							type="button" 
+							class="relative -ml-px inline-flex shrink-0 items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 cursor-pointer"
+							onclick={() => copyToClipboard($currentUser?.uid || '', 'key')}
+						>
+							{#if copiedKey}
+								<Check class="h-4 w-4 text-green-600" />
+							{:else}
+								<Copy class="h-4 w-4 text-gray-400" />
+							{/if}
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</Card>
 
 	<!-- Daemon Status -->
 	<Card class="p-5">
