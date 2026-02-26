@@ -137,6 +137,9 @@
 								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400 hover:text-gray-600 cursor-help transition-colors"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
 								<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 rounded bg-gray-900 px-2 py-1.5 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center">
 									Real-time RAM usage of your Ubuntu droplet
+									{#if stats?.dropletIp}
+										<div class="mt-1 pt-1 border-t border-gray-700 font-mono text-[10px]">IP: {stats.dropletIp}</div>
+									{/if}
 									<div class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900 px-1 py-1"></div>
 								</div>
 							</div>
@@ -155,6 +158,12 @@
 					<p class="text-xl font-bold text-gray-900 tracking-tight">
 						{stats ? Math.round(stats.ramUsage) : 0}<span class="text-sm font-medium text-gray-400 ml-0.5">% RAM</span>
 					</p>
+					{#if stats?.dropletIp}
+						<div class="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
+							<span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+							<span class="font-mono">{stats.dropletIp}</span>
+						</div>
+					{/if}
 				</div>
 			</div>
 		</Card>

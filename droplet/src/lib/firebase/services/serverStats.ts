@@ -20,6 +20,7 @@ function toServerStats(id: string, data: DocumentData): ServerStats {
     uptime: data.uptime ?? '0d 0h',
     activeSites: data.activeSites ?? 0,
     totalDeployments: data.totalDeployments ?? 0,
+    dropletIp: data.dropletIp,
     timestamp: data.timestamp?.toDate() ?? new Date()
   };
 }

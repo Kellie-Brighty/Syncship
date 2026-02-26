@@ -48,5 +48,6 @@ export interface ServerStats {
   uptime: string;
   activeSites: number;
   totalDeployments: number;
+  dropletIp?: string;
   timestamp: Date;
 }
