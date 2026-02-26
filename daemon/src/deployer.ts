@@ -41,13 +41,22 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
   let currentStep = 0;
 
   async function log(msg: string, stepIncrement = 0, stepName?: string) {
-    logs.push(msg);
     if (stepIncrement > 0) {
       currentStep += stepIncrement;
       progressBar.update(currentStep, { stepName: stepName || msg });
+      
+      // Compute text-based progress bar to save to the logs database for the UI terminal
+      const pct = Math.round((currentStep / 7) * 100);
+      const filledLength = Math.round((currentStep / 7) * 20);
+      const emptyLength = 20 - filledLength;
+      const barStr = '█'.repeat(filledLength) + '░'.repeat(emptyLength);
+      logs.push(`\n[📦 ${barStr}] ${currentStep}/7 | ${stepName || msg} (${pct}%)\n`);
     } else if (stepName) {
       progressBar.update(currentStep, { stepName });
     }
+    
+    // Always push the literal message as well
+    logs.push(msg);
     
     if (site.onLog) {
       try { await site.onLog(msg, logs.join('\n')); } catch (e) { /* ignore */ }
@@ -169,7 +178,25 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
 
     // 4. Copy output to web root
     if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
-    const sourceDir = resolve(repoDir, site.outputDir || '.');
+    let sourceDir = resolve(repoDir, site.outputDir || '.');
+
+    // Auto-fallback if the specified outputDir doesn't exist (helpful for React 'build' vs Vue 'dist')
+    if (site.outputDir && site.outputDir !== '.' && !existsSync(sourceDir)) {
+      const fallbacks = ['dist', 'build', 'out'];
+      for (const override of fallbacks) {
+        const potentialDir = resolve(repoDir, override);
+        if (existsSync(potentialDir)) {
+          sourceDir = potentialDir;
+          await log(`Output directory '${site.outputDir}' not found. Auto-detected '${override}' instead.`, 0, 'Deploying files');
+          break;
+        }
+      }
+    }
+
+    if (site.outputDir !== '.' && !existsSync(sourceDir)) {
+      throw new Error(`Output directory not found. The build did not produce the expected folder.`);
+    }
+
     mkdirSync(siteDir, { recursive: true });
     await execStream(`rsync -a --delete ${sourceDir}/ ${siteDir}/`);
     await log(`Files deployed to ${siteDir}`, 1, 'Deploying files');
@@ -213,6 +240,12 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
     const duration = formatDuration(Date.now() - startTime);
     await log(`❌ Deploy failed: ${err.message}`);
     return { success: false, duration, log: logs.join('\n'), commitMessage: 'Manual deployment' };
+  } finally {
+    // Clean up server space post-deployment (logs and cache)
+    try {
+      await execAsync('npm cache clean --force');
+      await execAsync('pm2 flush');
+    } catch { /* Ignore cleanup errors so they don't break the return */ }
   }
 }
 
