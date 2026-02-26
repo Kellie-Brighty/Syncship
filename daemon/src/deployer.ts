@@ -125,7 +125,7 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
       await execStream(`cd ${repoDir} && git remote set-url origin ${cloneUrl}.git && git fetch origin && git reset --hard origin/${site.branch}`, { timeout: 60000 });
     } else {
       await log(`Cloning ${site.repo}...`, 1, 'Cloning repository');
-      await execStream(`git clone --colors --branch ${site.branch} --single-branch ${cloneUrl}.git ${repoDir}`, { timeout: 120000 });
+      await execStream(`git clone --branch ${site.branch} --single-branch ${cloneUrl}.git ${repoDir}`, { timeout: 120000 });
     }
 
     // Read the latest commit message to use as deployment title
