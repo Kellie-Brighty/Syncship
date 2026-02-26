@@ -7,7 +7,7 @@ import os from 'os';
 import * as osutils from 'os-utils';
 
 async function boot() {
-  console.log(`🚀 AgencyDroplet Daemon starting boot sequence...`);
+  console.log(`🚀 SyncShip Daemon starting boot sequence...`);
   
   // Authenticate as a standard client using email & daemon token.
   // This physically locks the daemon into the `firestore.rules` sandbox.

@@ -8,7 +8,7 @@ import dns from 'dns';
 const execAsync = promisify(exec);
 
 const WEB_ROOT = process.env.WEB_ROOT || '/var/www';
-const REPOS_DIR = process.env.REPOS_DIR || '/opt/agencydroplet/repos';
+const REPOS_DIR = process.env.REPOS_DIR || '/opt/syncship/repos';
 const APPS_DIR = process.env.APPS_DIR || '/opt/apps';
 
 interface SiteConfig {
