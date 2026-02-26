@@ -1,5 +1,4 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import './env.js';
 
 import { db, authenticateDaemon } from './firebase.js';
 import { deploySite } from './deployer.js';
