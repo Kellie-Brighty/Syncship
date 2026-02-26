@@ -8,7 +8,9 @@ export const POST: RequestHandler = async ({ request }) => {
 	const rawBody = await request.text();
 
 	// Verify using Svix (Standard Webhooks)
-	const wh = new Webhook(POLAR_WEBHOOK_SECRET);
+	// Polar secrets often start with 'polar_whs_', which Svix doesn't expect (it wants raw base64)
+	const cleanedSecret = POLAR_WEBHOOK_SECRET.replace('polar_whs_', '');
+	const wh = new Webhook(cleanedSecret);
 	let event: Record<string, unknown>;
 
 	try {
