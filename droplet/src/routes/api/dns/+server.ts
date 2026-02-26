@@ -1,5 +1,4 @@
 import { json } from '@sveltejs/kit';
-import dns from 'dns';
 import type { RequestEvent } from '@sveltejs/kit';
 
 export async function GET({ url }: RequestEvent) {
@@ -13,13 +12,19 @@ export async function GET({ url }: RequestEvent) {
   const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
 
   try {
-    const records = await dns.promises.resolve4(cleanDomain);
+    // Use Google Public DNS API for consistent results across all environments
+    const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(cleanDomain)}&type=A`);
+    if (!res.ok) throw new Error('DNS lookup failed');
+
+    const data = await res.json();
+
+    // Extract A records from the response
+    const records = (data.Answer || [])
+      .filter((r: { type: number }) => r.type === 1) // type 1 = A record
+      .map((r: { data: string }) => r.data);
+
     return json({ records, domain: cleanDomain });
   } catch (error: any) {
-    // If ENOTFOUND or no records, we just return empty array instead of 500 error
-    if (error.code === 'ENOTFOUND' || error.code === 'ENODATA') {
-      return json({ records: [], domain: cleanDomain });
-    }
-    return json({ error: error.message }, { status: 500 });
+    return json({ records: [], domain: cleanDomain, error: error.message });
   }
 }
