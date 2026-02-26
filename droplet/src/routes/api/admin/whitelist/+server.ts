@@ -23,39 +23,62 @@ export async function POST({ request }: RequestEvent) {
 			return json({ error: 'Forbidden: Admin access only' }, { status: 403 });
 		}
 		
-		const { email } = await request.json();
-		if (!email || !email.includes('@')) {
-			return json({ error: 'Invalid email address' }, { status: 400 });
+		const { email, uid, isWhitelisted } = await request.json();
+		
+		if (!email && !uid) {
+			return json({ error: 'Missing email or uid' }, { status: 400 });
 		}
 
-		// 2. Grant Lifetime Access via Whitelist
+		const status = isWhitelisted !== false; // default to true
+		const plan = status ? 'lifetime' : 'free';
+
+		// 2. Update existing user by UID if provided
+		if (uid) {
+			await adminDb.collection('users').doc(uid).update({
+				plan: plan,
+				isWhitelisted: status,
+				planSetAt: new Date().toISOString()
+			});
+			return json({ 
+				success: true, 
+				message: `User ${status ? 'whitelisted' : 'un-whitelisted'} successfully!` 
+			});
+		}
+
+		// 3. Update by Email (for new entries or pending users)
 		const targetEmail = email.toLowerCase();
 		const usersRef = adminDb.collection('users');
 		const snap = await usersRef.where('email', '==', targetEmail).limit(1).get();
 
 		if (snap.empty) {
-			// User doesn't exist yet, store in pending_plans with whitelist flag
-			await adminDb.collection('pending_plans').doc(targetEmail).set({
-				plan: 'lifetime',
-				isWhitelisted: true,
-				setAt: new Date().toISOString()
-			});
-			return json({ 
-				success: true, 
-				message: `${targetEmail} whitelisted (pending registration)` 
-			});
+			if (status) {
+				// User doesn't exist yet, store in pending_plans with whitelist flag
+				await adminDb.collection('pending_plans').doc(targetEmail).set({
+					plan: plan,
+					isWhitelisted: status,
+					setAt: new Date().toISOString()
+				});
+				return json({ 
+					success: true, 
+					message: `${targetEmail} whitelisted (pending registration)` 
+				});
+			} else {
+				// Remove from pending if exists
+				await adminDb.collection('pending_plans').doc(targetEmail).delete();
+				return json({ success: true, message: `${targetEmail} removed from pending whitelist` });
+			}
 		}
 
 		// User exists, update directly
 		await snap.docs[0].ref.update({
-			plan: 'lifetime',
-			isWhitelisted: true,
+			plan: plan,
+			isWhitelisted: status,
 			planSetAt: new Date().toISOString()
 		});
 
 		return json({ 
 			success: true, 
-			message: `${targetEmail} whitelisted successfully!` 
+			message: `${targetEmail} ${status ? 'whitelisted' : 'un-whitelisted'} successfully!` 
 		});
 	} catch (err: any) {
 		console.error('[Admin Whitelist] Error:', err);
