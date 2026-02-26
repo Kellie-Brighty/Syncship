@@ -300,7 +300,7 @@
 		}
 	}
 
-	let canceling = false;
+	let canceling = $state(false);
 	async function cancelBuild(deployId: string) {
 		if (canceling) return;
 		canceling = true;

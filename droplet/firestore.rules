@@ -28,17 +28,26 @@ service cloud.firestore {
       allow delete: if isAuth() && resource.data.ownerId == request.auth.uid;
     }
 
-    // Deployments — only the owner can read; daemon creates via admin SDK
+    // Deployments — owner can create and read. Owner can ONLY update status to 'canceled'
     match /deployments/{deployId} {
       allow read: if isAuth() && resource.data.ownerId == request.auth.uid;
       allow create: if isAuth() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if false; // Only daemon (admin SDK) can modify
+      allow update: if isAuth() && resource.data.ownerId == request.auth.uid 
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'completedAt'])
+                    && request.resource.data.status == 'canceled';
+      allow delete: if false;
     }
 
     // Server stats — any authenticated user can read; daemon writes via admin SDK
     match /serverStats/{serverId} {
       allow read: if isAuth();
       allow write: if false; // Only daemon (admin SDK) can write
+    }
+    
+    // Daemon status and commands
+    match /daemon/{docId} {
+      allow read: if isAuth();
+      allow write: if isAuth() && docId == 'commands';
     }
 
     // Deny everything else by default
