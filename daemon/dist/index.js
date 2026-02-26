@@ -1,108 +1,154 @@
-import { db } from './firebase.js';
+import { db, authenticateDaemon } from './firebase.js';
 import { deploySite } from './deployer.js';
-import { FieldValue } from 'firebase-admin/firestore';
-console.log('🚀 AgencyDroplet Daemon starting...');
-// Heartbeat: write to Firestore every 60s so dashboard knows we're alive
-async function sendHeartbeat() {
-    try {
-        await db.collection('daemon').doc('heartbeat').set({
-            lastPing: FieldValue.serverTimestamp(),
-            status: 'online'
-        }, { merge: true });
-    }
-    catch (err) {
-        console.error('Heartbeat failed:', err);
-    }
-}
-sendHeartbeat();
-setInterval(sendHeartbeat, 60000);
-// Listen for queued deployments and process them
-function startDeploymentListener() {
-    console.log('👂 Listening for deployment requests...\n');
-    const deploymentsRef = db.collection('deployments');
-    // Watch for queued deployments
-    deploymentsRef
-        .where('status', '==', 'queued')
-        .onSnapshot(async (snapshot) => {
-        for (const change of snapshot.docChanges()) {
-            if (change.type !== 'added')
-                continue;
-            const doc = change.doc;
-            const data = doc.data();
-            const deployId = doc.id;
-            console.log(`\n📦 New deployment: ${data.siteName} (${deployId})`);
-            // Mark as building
-            await doc.ref.update({
-                status: 'building',
-                startedAt: FieldValue.serverTimestamp()
-            });
-            // Update site status
-            await db.collection('sites').doc(data.siteId).update({
-                status: 'building'
-            });
+import { doc, setDoc, updateDoc, collection, query, where, onSnapshot, serverTimestamp, getDoc } from 'firebase/firestore';
+import os from 'os';
+import * as osutils from 'os-utils';
+async function boot() {
+    console.log(`🚀 AgencyDroplet Daemon starting boot sequence...`);
+    // Authenticate as a standard client using email & daemon token.
+    // This physically locks the daemon into the `firestore.rules` sandbox.
+    const SYNC_USER_ID = await authenticateDaemon();
+    // Heartbeat: write to Firestore every 5s so dashboard knows we're alive and has fresh stats
+    function sendHeartbeat() {
+        osutils.cpuUsage(async (cpuPercent) => {
             try {
-                // Get site config
-                const siteDoc = await db.collection('sites').doc(data.siteId).get();
-                if (!siteDoc.exists) {
-                    throw new Error(`Site ${data.siteId} not found`);
-                }
-                const site = siteDoc.data();
-                // Fetch user's settings to check for GitHub token
-                let githubToken = undefined;
-                if (data.ownerId) {
-                    const settingsDoc = await db.collection('settings').doc(data.ownerId).get();
-                    if (settingsDoc.exists) {
-                        githubToken = settingsDoc.data()?.githubToken;
-                    }
-                }
-                const result = await deploySite({
-                    id: data.siteId,
-                    name: site.name,
-                    domain: site.domain,
-                    repo: site.repo,
-                    branch: data.branch || site.branch,
-                    buildCommand: site.buildCommand || '',
-                    outputDir: site.outputDir || '.',
-                    githubToken,
-                    envVars: site.envVars
+                const totalRam = os.totalmem() / (1024 * 1024 * 1024); // GB
+                const freeRam = os.freemem() / (1024 * 1024 * 1024); // GB
+                const usedRam = totalRam - freeRam;
+                const memPercent = (usedRam / totalRam) * 100;
+                // 1. Keep the daemon status alive
+                await setDoc(doc(db, 'daemon', SYNC_USER_ID), {
+                    lastPing: serverTimestamp(),
+                    status: 'online'
+                }, { merge: true });
+                // 2. Stream live OS stats for the dashboard charts
+                await setDoc(doc(db, 'serverStats', SYNC_USER_ID), {
+                    timestamp: serverTimestamp(),
+                    cpu: cpuPercent * 100,
+                    memory: memPercent,
+                    totalRamGb: totalRam,
+                    usedRamGb: usedRam
                 });
-                // Update deployment status
-                await doc.ref.update({
-                    status: result.success ? 'success' : 'failed',
-                    duration: result.duration,
-                    buildLog: result.log,
-                    completedAt: FieldValue.serverTimestamp()
-                });
-                // Update site status
-                await db.collection('sites').doc(data.siteId).update({
-                    status: result.success ? 'live' : 'failed',
-                    lastDeployAt: FieldValue.serverTimestamp()
-                });
-                console.log(`${result.success ? '✅' : '❌'} Deployment ${deployId} ${result.success ? 'succeeded' : 'failed'} in ${result.duration}`);
             }
             catch (err) {
-                console.error(`❌ Deployment ${deployId} crashed:`, err.message);
-                await doc.ref.update({
-                    status: 'failed',
-                    buildLog: `Fatal error: ${err.message}`,
-                    completedAt: FieldValue.serverTimestamp()
-                });
-                await db.collection('sites').doc(data.siteId).update({
-                    status: 'failed'
-                });
+                console.error('Heartbeat failed:', err);
             }
+        });
+    }
+    sendHeartbeat(); // One-time ping on startup
+    // Listen for commands from the dashboard (e.g., refresh server stats)
+    onSnapshot(doc(db, 'daemon', SYNC_USER_ID), async (snap) => {
+        const data = snap.data();
+        if (data && data.action === 'refresh_stats') {
+            console.log('🔄 Dashboard requested fresh stats');
+            sendHeartbeat();
+            // Acknowledge the command so it doesn't run repeatedly
+            await updateDoc(snap.ref, { action: null }).catch(() => { });
         }
-    }, (error) => {
-        console.error('❌ Firestore listener error:', error);
-        // Restart listener after a delay
-        setTimeout(startDeploymentListener, 5000);
     });
+    // Listen for queued deployments and process them
+    function startDeploymentListener() {
+        console.log('👂 Listening for deployment requests...\n');
+        const deploymentsRef = collection(db, 'deployments');
+        const q = query(deploymentsRef, where('ownerId', '==', SYNC_USER_ID), where('status', '==', 'queued'));
+        // Watch for queued deployments
+        onSnapshot(q, async (snapshot) => {
+            for (const change of snapshot.docChanges()) {
+                if (change.type !== 'added')
+                    continue;
+                const docSnapshot = change.doc;
+                const data = docSnapshot.data();
+                const deployId = docSnapshot.id;
+                console.log(`\n📦 New deployment: ${data.siteName} (${deployId})`);
+                // Mark as building
+                await updateDoc(docSnapshot.ref, {
+                    status: 'building',
+                    startedAt: serverTimestamp()
+                });
+                // Update site status
+                await updateDoc(doc(db, 'sites', data.siteId), {
+                    status: 'building'
+                });
+                try {
+                    // Get site config
+                    const siteDocSnap = await getDoc(doc(db, 'sites', data.siteId));
+                    if (!siteDocSnap.exists()) {
+                        throw new Error(`Site ${data.siteId} not found`);
+                    }
+                    const site = siteDocSnap.data();
+                    // Fetch user's settings to check for GitHub token
+                    let githubToken = undefined;
+                    if (data.ownerId) {
+                        const settingsDocSnap = await getDoc(doc(db, 'settings', data.ownerId));
+                        if (settingsDocSnap.exists()) {
+                            githubToken = settingsDocSnap.data()?.githubToken;
+                        }
+                    }
+                    const abortController = new AbortController();
+                    // Listen for cancellation from the UI
+                    const unsubscribeCancel = onSnapshot(docSnapshot.ref, (snap) => {
+                        if (snap.exists() && snap.data()?.status === 'canceled') {
+                            console.log(`\n🛑 Deployment ${deployId} canceled by user`);
+                            abortController.abort();
+                        }
+                    });
+                    const result = await deploySite({
+                        id: data.siteId,
+                        name: site.name,
+                        domain: site.domain,
+                        repo: site.repo,
+                        branch: data.branch || site.branch,
+                        buildCommand: site.buildCommand || '',
+                        outputDir: site.outputDir || '.',
+                        githubToken,
+                        envVars: site.envVars,
+                        abortSignal: abortController.signal
+                    });
+                    unsubscribeCancel(); // Clean up listener
+                    // Update deployment status + title from commit message
+                    // (Only if it wasn't already marked canceled by the UI listener)
+                    const finalSnap = await getDoc(docSnapshot.ref);
+                    if (finalSnap.data()?.status !== 'canceled') {
+                        await updateDoc(docSnapshot.ref, {
+                            status: result.success ? 'success' : 'failed',
+                            duration: result.duration,
+                            buildLog: result.log,
+                            message: result.commitMessage,
+                            completedAt: serverTimestamp()
+                        });
+                    }
+                    // Update site status
+                    await updateDoc(doc(db, 'sites', data.siteId), {
+                        status: result.success ? 'live' : 'failed',
+                        lastDeployAt: serverTimestamp()
+                    });
+                    console.log(`${result.success ? '✅' : '❌'} Deployment ${deployId} ${result.success ? 'succeeded' : 'failed'} in ${result.duration}`);
+                }
+                catch (err) {
+                    console.error(`❌ Deployment ${deployId} crashed:`, err.message);
+                    await updateDoc(docSnapshot.ref, {
+                        status: 'failed',
+                        buildLog: `Fatal error: ${err.message}`,
+                        completedAt: serverTimestamp()
+                    });
+                    await updateDoc(doc(db, 'sites', data.siteId), {
+                        status: 'failed'
+                    });
+                }
+            }
+        }, (error) => {
+            console.error('❌ Firestore listener error:', error);
+            // Restart listener after a delay
+            setTimeout(startDeploymentListener, 5000);
+        });
+    }
+    // Start listening
+    startDeploymentListener();
+    // Keep alive
+    process.on('SIGINT', () => {
+        console.log('\n👋 Daemon shutting down...');
+        process.exit(0);
+    });
+    console.log('✅ Daemon is securely connected and filtering isolated tasks. Press Ctrl+C to stop.\n');
 }
-// Start listening
-startDeploymentListener();
-// Keep alive
-process.on('SIGINT', () => {
-    console.log('\n👋 Daemon shutting down...');
-    process.exit(0);
-});
-console.log('✅ Daemon is running. Press Ctrl+C to stop.\n');
+boot().catch(console.error);

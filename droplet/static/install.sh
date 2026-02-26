@@ -7,23 +7,24 @@ set -e
 # It installs Nginx, Git, Node, Bun, Certbot, and the SyncShip Daemon.
 # ==============================================================================
 
-# 1. Parse Arguments (we need the user's secret Server Key)
+# 1. Parse Arguments (we need the user's secret Server Email and Token)
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        --key) SERVER_KEY="$2"; shift ;;
+        --email) SERVER_EMAIL="$2"; shift ;;
+        --token) SERVER_TOKEN="$2"; shift ;;
         *) echo "Unknown parameter passed: $1"; exit 1 ;;
     esac
     shift
 done
 
-if [ -z "$SERVER_KEY" ]; then
-    echo "❌ Error: Missing --key argument."
-    echo "Usage: curl -sL https://YOUR_DOMAIN/install.sh | bash -s -- --key YOUR_SERVER_KEY"
+if [ -z "$SERVER_EMAIL" ] || [ -z "$SERVER_TOKEN" ]; then
+    echo "❌ Error: Missing --email or --token arguments."
+    echo "Usage: curl -sL https://raw.githubusercontent.com/Kellie-Brighty/Syncship/main/droplet/static/install.sh | bash -s -- --email YOUR_DAEMON_EMAIL --token YOUR_DAEMON_TOKEN"
     exit 1
 fi
 
 echo "🚀 Starting SyncShip Daemon Installation..."
-echo "🔑 Server Key acknowledged."
+echo "🔑 Daemon Credentials acknowledged."
 echo ""
 
 # 2. Update System & Install Core Dependencies
@@ -77,15 +78,19 @@ cd daemon
 # We securely write the .env file that locks this daemon to the user's specific ID.
 echo "⚙️ Configuring environment variables..."
 
-# In a real SaaS, either embed a restricted Firebase API key here, 
-# or have the dashboard provide a restricted short-lived token.
-# For this tutorial, we are creating the placeholder for the .env
+# The daemon authenticates via the standard Firebase Client SDK as an isolated tenant process
 cat <<EOF > .env
-# This unique key ensures this daemon ONLY listens for YOUR deployments.
-SYNC_USER_ID=$SERVER_KEY
+# This unique credential ensures this daemon ONLY listens for YOUR deployments.
+SYNC_USER_EMAIL=$SERVER_EMAIL
+SYNC_DAEMON_TOKEN=$SERVER_TOKEN
 
-# Google Cloud Project Details
-GCP_PROJECT_ID=agency-droplet-a1c0d
+# Google Cloud Firebase Details (Client SDK)
+FIREBASE_API_KEY=AIzaSyCgmhQbILStmRwBIoSvsUKbJ7zONlfHxUw
+FIREBASE_AUTH_DOMAIN=syncship-saas.firebaseapp.com
+FIREBASE_PROJECT_ID=syncship-saas
+FIREBASE_STORAGE_BUCKET=syncship-saas.firebasestorage.app
+FIREBASE_MESSAGING_SENDER_ID=430515257138
+FIREBASE_APP_ID=1:430515257138:web:996ebca46579aadb39612b
 EOF
 
 echo "📦 Installing NPM dependencies for the daemon..."

@@ -34,6 +34,10 @@
 	let showServerKey = $state(false);
 	let copiedKey = $state(false);
 	let copiedCommand = $state(false);
+	
+	let daemonToken = $state('');
+	let daemonEmail = $state('');
+	let generatingToken = $state(false);
 
 	function copyToClipboard(text: string, type: 'key' | 'command') {
 		navigator.clipboard.writeText(text);
@@ -62,6 +66,8 @@
 			if (settingsDoc.exists()) {
 				const data = settingsDoc.data();
 				githubToken = data.githubToken || '';
+				daemonToken = data.daemonToken || '';
+				daemonEmail = data.daemonEmail || '';
 			}
 			tokenLoaded = true;
 		} catch { tokenLoaded = true; }
@@ -101,10 +107,34 @@
 		tokenSaving = true; tokenMsg = '';
 		try {
 			await setDoc(doc(db, 'settings', user.uid), { githubToken: githubToken.trim() }, { merge: true });
-			tokenMsg = 'Token saved';
+			tokenMsg = 'Token saved successfully';
 			setTimeout(() => tokenMsg = '', 3000);
 		} catch (err: any) { tokenMsg = err.message; }
 		finally { tokenSaving = false; }
+	}
+
+	async function generateDaemonToken() {
+		const user = $currentUser;
+		if (!user) return;
+		generatingToken = true;
+		try {
+			const idToken = await user.getIdToken();
+			const res = await fetch('/api/daemon-token', {
+				method: 'POST',
+				headers: {
+					'Authorization': `Bearer ${idToken}`
+				}
+			});
+			if (!res.ok) throw new Error('Failed to generate token');
+			const data = await res.json();
+			daemonToken = data.daemonToken;
+			daemonEmail = data.daemonEmail;
+		} catch (err) {
+			console.error(err);
+			alert('Failed to generate daemon token');
+		} finally {
+			generatingToken = false;
+		}
 	}
 
 	async function checkDaemonStatus() {
@@ -207,58 +237,71 @@
 				<h3 class="text-sm font-semibold text-gray-900">Server Connection Key</h3>
 				<p class="mt-0.5 text-sm text-gray-500">Run this command on your Ubuntu 20.04/22.04 server to link it to SyncShip.</p>
 				
-				<div class="mt-4">
-					<label class="block text-xs font-medium leading-6 text-gray-900">Installation Command</label>
-					<div class="mt-1 flex rounded-md shadow-sm">
-						<div class="relative flex flex-grow items-stretch focus-within:z-10 min-w-0">
-							<pre class="block w-full rounded-none rounded-l-md border-0 py-2.5 pl-3 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 bg-gray-50 sm:text-sm sm:leading-6 font-mono overflow-hidden text-ellipsis whitespace-nowrap">curl -sL https://raw.githubusercontent.com/Kellie-Brighty/Syncship/main/droplet/static/install.sh | bash -s -- --key {$currentUser?.uid}</pre>
-						</div>
-						<button 
-							type="button" 
-							class="relative -ml-px inline-flex shrink-0 items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 cursor-pointer"
-							onclick={() => copyToClipboard(`curl -sL https://raw.githubusercontent.com/Kellie-Brighty/Syncship/main/droplet/static/install.sh | bash -s -- --key ${$currentUser?.uid}`, 'command')}
-						>
-							{#if copiedCommand}
-								<Check class="h-4 w-4 text-green-600" /> <span class="text-green-600">Copied</span>
-							{:else}
-								<Copy class="h-4 w-4 text-gray-400" /> Copy
-							{/if}
-						</button>
+				{#if !daemonToken}
+					<div class="mt-4 p-4 border border-yellow-200 bg-yellow-50 rounded-md">
+						<p class="text-sm text-yellow-800">You need to generate a secure Daemon Password to install SyncShip onto your VPS.</p>
+						<Button class="mt-3" onclick={generateDaemonToken} disabled={generatingToken}>
+							{generatingToken ? 'Generating...' : 'Generate Server Key'}
+						</Button>
 					</div>
-					<p class="mt-2 text-xs text-gray-500">This script will automatically install Nginx, Node.js, Certbot, and the SyncShip Daemon.</p>
-				</div>
+				{:else}
+					<div class="mt-4">
+						<label class="block text-xs font-medium leading-6 text-gray-900">Installation Command</label>
+						<div class="mt-1 flex rounded-md shadow-sm">
+							<div class="relative flex flex-grow items-stretch focus-within:z-10 min-w-0">
+								<pre class="block w-full rounded-none rounded-l-md border-0 py-2.5 pl-3 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 bg-gray-50 sm:text-sm sm:leading-6 font-mono overflow-hidden text-ellipsis whitespace-nowrap">curl -sL https://raw.githubusercontent.com/Kellie-Brighty/Syncship/main/droplet/static/install.sh | bash -s -- --email {daemonEmail} --token {daemonToken}</pre>
+							</div>
+							<button 
+								type="button" 
+								class="relative -ml-px inline-flex shrink-0 items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 cursor-pointer"
+								onclick={() => copyToClipboard(`curl -sL https://raw.githubusercontent.com/Kellie-Brighty/Syncship/main/droplet/static/install.sh | bash -s -- --email ${daemonEmail} --token ${daemonToken}`, 'command')}
+							>
+								{#if copiedCommand}
+									<Check class="h-4 w-4 text-green-600" /> <span class="text-green-600">Copied</span>
+								{:else}
+									<Copy class="h-4 w-4 text-gray-400" /> Copy
+								{/if}
+							</button>
+						</div>
+						<p class="mt-2 text-xs text-gray-500">This script will automatically install Nginx, Node.js, Certbot, and the SyncShip Daemon.</p>
+					</div>
 
-				<div class="mt-6 pt-5 border-t border-gray-100">
-					<label class="block text-xs font-medium leading-6 text-gray-900">Raw Server Key (Keep Secret)</label>
-					<div class="mt-1 flex rounded-md shadow-sm max-w-sm">
-						<div class="relative flex flex-grow items-stretch focus-within:z-10">
-							<input 
-								type={showServerKey ? 'text' : 'password'} 
-								readonly 
-								value={$currentUser?.uid || ''} 
-								class="block w-full rounded-none rounded-l-md border-0 py-1.5 pl-3 text-gray-900 ring-1 ring-inset ring-gray-300 bg-gray-50 focus:ring-2 focus:ring-inset focus:ring-gray-900 sm:text-sm sm:leading-6 font-mono" 
-							/>
+					<div class="mt-6 pt-5 border-t border-gray-100">
+						<label class="block text-xs font-medium leading-6 text-gray-900">Raw Daemon Password (Keep Secret)</label>
+						<div class="mt-1 flex rounded-md shadow-sm max-w-sm">
+							<div class="relative flex flex-grow items-stretch focus-within:z-10">
+								<input 
+									type={showServerKey ? 'text' : 'password'} 
+									readonly 
+									value={daemonToken} 
+									class="block w-full rounded-none rounded-l-md border-0 py-1.5 pl-3 text-gray-900 ring-1 ring-inset ring-gray-300 bg-gray-50 focus:ring-2 focus:ring-inset focus:ring-gray-900 sm:text-sm sm:leading-6 font-mono" 
+								/>
+							</div>
+							<button type="button" class="relative -ml-px inline-flex items-center gap-x-1.5 px-3 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 cursor-pointer" onclick={() => showServerKey = !showServerKey}>
+								{#if showServerKey}
+									<EyeOff class="h-4 w-4 text-gray-400" />
+								{:else}
+									<Eye class="h-4 w-4 text-gray-400" />
+								{/if}
+							</button>
+							<button 
+								type="button" 
+								class="relative -ml-px inline-flex shrink-0 items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 cursor-pointer"
+								onclick={() => copyToClipboard(daemonToken, 'key')}
+							>
+								{#if copiedKey}
+									<Check class="h-4 w-4 text-green-600" />
+								{:else}
+									<Copy class="h-4 w-4 text-gray-400" />
+								{/if}
+							</button>
 						</div>
-						<button type="button" class="relative -ml-px inline-flex items-center gap-x-1.5 px-3 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 cursor-pointer" onclick={() => showServerKey = !showServerKey}>
-							{#if showServerKey}
-								<EyeOff class="h-4 w-4 text-gray-400" />
-							{:else}
-								<Eye class="h-4 w-4 text-gray-400" />
-							{/if}
-						</button>
-						<button 
-							type="button" 
-							class="relative -ml-px inline-flex shrink-0 items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 cursor-pointer"
-							onclick={() => copyToClipboard($currentUser?.uid || '', 'key')}
-						>
-							{#if copiedKey}
-								<Check class="h-4 w-4 text-green-600" />
-							{:else}
-								<Copy class="h-4 w-4 text-gray-400" />
-							{/if}
-						</button>
+						<p class="mt-2 text-xs text-gray-500">If compromised, you can generate a new one. This will disconnect your current VPS.</p>
+						<Button variant="outline" class="mt-3 text-xs" onclick={generateDaemonToken} disabled={generatingToken}>
+							{generatingToken ? 'Generating...' : 'Rotate Server Password'}
+						</Button>
 					</div>
-				</div>
+				{/if}
 			</div>
 		</div>
 	</Card>
