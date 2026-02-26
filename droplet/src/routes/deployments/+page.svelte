@@ -133,31 +133,31 @@
 				{@const dStatus = deploy.status === 'success' ? 'bg-green-500' : deploy.status === 'failed' ? 'bg-red-500' : deploy.status === 'building' ? 'bg-yellow-500 animate-pulse' : 'bg-gray-400'}
 				{@const isExpanded = expandedDeployId === deploy.id}
 				<div>
-					<button
-						onclick={() => expandedDeployId = isExpanded ? null : deploy.id}
-						class="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer text-left"
-					>
-						<div class="flex items-center gap-3">
-							<span class="h-2 w-2 rounded-full {dStatus}"></span>
-							<div>
-								<div class="flex items-center gap-2">
-									<span class="text-sm font-medium text-gray-900">{deploy.siteName}</span>
-									<code class="text-xs text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded font-mono">{deploy.commit.slice(0, 7)}</code>
-									<span class="text-sm text-gray-500 truncate max-w-[200px]">{deploy.message}</span>
+						<button
+							onclick={() => expandedDeployId = isExpanded ? null : deploy.id}
+							class="w-full flex flex-col sm:flex-row sm:items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer text-left gap-3 sm:gap-0"
+						>
+							<div class="flex items-start sm:items-center gap-3">
+								<span class="mt-1.5 sm:mt-0 h-2 w-2 shrink-0 rounded-full {dStatus}"></span>
+								<div class="min-w-0">
+									<div class="flex flex-wrap items-center gap-2">
+										<span class="text-sm font-medium text-gray-900 truncate">{deploy.siteName}</span>
+										<code class="text-xs text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded font-mono shrink-0">{deploy.commit.slice(0, 7)}</code>
+										<span class="text-sm text-gray-500 truncate max-w-[200px]">{deploy.message}</span>
+									</div>
+									<p class="mt-0.5 text-xs text-gray-400 truncate">
+										{deploy.triggeredBy} · {deploy.branch}
+									</p>
 								</div>
-								<p class="mt-0.5 text-xs text-gray-400">
-									{deploy.triggeredBy} · {deploy.branch}
-								</p>
 							</div>
-						</div>
-						<div class="flex items-center gap-3">
-							<div class="text-right">
-								<p class="text-sm font-mono text-gray-500">{deploy.duration}</p>
-								<p class="text-xs text-gray-400">{timeAgo(deploy.createdAt)}</p>
+							<div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pl-5 sm:pl-0">
+								<div class="text-left sm:text-right">
+									<p class="text-sm font-mono text-gray-500">{deploy.duration}</p>
+									<p class="text-xs text-gray-400">{timeAgo(deploy.createdAt)}</p>
+								</div>
+								<ChevronDown class="h-4 w-4 shrink-0 text-gray-400 transition-transform {isExpanded ? 'rotate-180' : ''}" />
 							</div>
-							<ChevronDown class="h-4 w-4 text-gray-400 transition-transform {isExpanded ? 'rotate-180' : ''}" />
-						</div>
-					</button>
+						</button>
 
 					{#if isExpanded}
 						<div class="px-5 pb-4">

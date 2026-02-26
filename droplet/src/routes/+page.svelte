@@ -238,7 +238,7 @@
 				</ul>
 
 				<a
-					href="https://buy.polar.sh/polar_cl_c1f58bd5-110d-4d10-97ba-cc94be3b7295"
+					href="https://buy.polar.sh/polar_cl_3F8ljAeCCszNjClyqG3JXVSB3u5ITb3pAly5r0mP2RH"
 					target="_blank"
 					rel="noopener noreferrer"
 					class="mt-8 block rounded-xl bg-white py-3 text-center text-sm font-bold text-gray-900 hover:bg-gray-100 transition-colors shadow"
