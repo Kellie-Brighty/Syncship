@@ -581,7 +581,7 @@
 				<Card class="overflow-hidden">
 				<div class="divide-y divide-gray-100">
 					{#each deployments.slice(0, 3) as deploy}
-						{@const dStatus = deploy.status === 'success' ? 'bg-green-500' : deploy.status === 'failed' ? 'bg-red-500' : deploy.status === 'canceled' ? 'bg-gray-400' : deploy.status === 'building' ? 'bg-yellow-500 animate-pulse' : 'bg-gray-400'}
+						{@const dStatus = deploy.status === 'success' ? 'bg-green-500' : deploy.status === 'failed' ? 'bg-red-500' : deploy.status === 'building' ? 'bg-yellow-500 animate-pulse' : 'bg-gray-400'}
 						{@const isExpanded = expandedDeployId === deploy.id}
 						<div>
 							<button

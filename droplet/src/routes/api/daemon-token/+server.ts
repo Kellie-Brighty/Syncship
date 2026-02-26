@@ -21,9 +21,9 @@ export async function POST({ request }) {
 		
 		const uid = decodedToken.uid;
 
-        // 2. Generate a highly secure random token (password) for the daemon
+		// 2. Generate a highly secure random token (password) for the daemon
 		const generatedPassword = crypto.randomBytes(32).toString('hex');
-		const daemonEmail = `daemon-${uid}@syncship.com`;
+		const daemonEmail = `daemon-${uid}@syncship.ink`;
 
         // 3. Provision or Update the headless Daemon Auth Account
 		try {

@@ -246,10 +246,10 @@
 					</div>
 				{:else}
 					<div class="mt-4">
-						<label class="block text-xs font-medium leading-6 text-gray-900">Installation Command</label>
+						<label for="install-command" class="block text-xs font-medium leading-6 text-gray-900">Installation Command</label>
 						<div class="mt-1 flex rounded-md shadow-sm">
 							<div class="relative flex flex-grow items-stretch focus-within:z-10 min-w-0">
-								<pre class="block w-full rounded-none rounded-l-md border-0 py-2.5 pl-3 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 bg-gray-50 sm:text-sm sm:leading-6 font-mono overflow-hidden text-ellipsis whitespace-nowrap">curl -sL https://raw.githubusercontent.com/Kellie-Brighty/Syncship/main/droplet/static/install.sh | bash -s -- --email {daemonEmail} --token {daemonToken}</pre>
+								<pre id="install-command" class="block w-full rounded-none rounded-l-md border-0 py-2.5 pl-3 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 bg-gray-50 sm:text-sm sm:leading-6 font-mono overflow-hidden text-ellipsis whitespace-nowrap">curl -sL https://raw.githubusercontent.com/Kellie-Brighty/Syncship/main/droplet/static/install.sh | bash -s -- --email {daemonEmail} --token {daemonToken}</pre>
 							</div>
 							<button 
 								type="button" 
@@ -267,10 +267,11 @@
 					</div>
 
 					<div class="mt-6 pt-5 border-t border-gray-100">
-						<label class="block text-xs font-medium leading-6 text-gray-900">Raw Daemon Password (Keep Secret)</label>
+						<label for="raw-password" class="block text-xs font-medium leading-6 text-gray-900">Raw Daemon Password (Keep Secret)</label>
 						<div class="mt-1 flex rounded-md shadow-sm max-w-sm">
 							<div class="relative flex flex-grow items-stretch focus-within:z-10">
 								<input 
+									id="raw-password"
 									type={showServerKey ? 'text' : 'password'} 
 									readonly 
 									value={daemonToken} 

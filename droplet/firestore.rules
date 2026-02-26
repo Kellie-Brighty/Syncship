@@ -15,7 +15,7 @@ service cloud.firestore {
 
     // Helper: check if the request is coming from the user's specific remote daemon
     function isDaemonFor(uid) {
-      return isAuth() && request.auth.token.email == 'daemon-' + uid + '@syncship.com';
+      return isAuth() && request.auth.token.email == 'daemon-' + uid + '@syncship.ink';
     }
 
     // Users collection — users can only read/write their own doc
