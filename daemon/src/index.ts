@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { db, authenticateDaemon } from './firebase.js';
 import { deploySite } from './deployer.js';
 import { doc, setDoc, updateDoc, collection, query, where, onSnapshot, serverTimestamp, getDoc } from 'firebase/firestore';
