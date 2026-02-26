@@ -3,7 +3,8 @@
 	import Button from './Button.svelte';
 	import Input from './Input.svelte';
 	import Card from './Card.svelte';
-	import { createSite } from '$lib/firebase/services/sites';
+	import { createSite, getSites } from '$lib/firebase/services/sites';
+	import { canCreateSite } from '$lib/firebase/services/payments';
 	import { currentUser } from '$lib/stores/auth';
 	import { get } from 'svelte/store';
 
@@ -25,6 +26,10 @@
 	let startCommand = $state('node dist/index.js');
 	let loading = $state(false);
 	let error = $state('');
+	
+	// Limit state
+	let overLimit = $state(false);
+	let limitMessage = $state('');
 
 	// Update defaults when project type changes
 	$effect(() => {
@@ -43,17 +48,29 @@
 		}
 	});
 
-	// Clear form when modal opens
+	// Check limits when modal opens
 	$effect(() => {
 		if (open) {
+			const user = get(currentUser);
+			if (user) {
+				checkLimits(user.uid);
+			}
 			name = ''; domain = ''; repo = ''; branch = 'main';
 			projectType = 'static'; buildCommand = ''; outputDir = '.';
 			startCommand = ''; error = '';
 		}
 	});
 
+	async function checkLimits(uid: string) {
+		const sites = await getSites(uid);
+		const { allowed, message } = await canCreateSite(uid, sites.length);
+		overLimit = !allowed;
+		limitMessage = message || '';
+	}
+
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
+		if (overLimit) return;
 		error = '';
 
 		if (!name.trim()) { error = 'Site name is required'; return; }
@@ -120,15 +137,30 @@
 
 			<!-- Body -->
 			<form onsubmit={handleSubmit} class="px-6 py-5 space-y-4">
+				{#if overLimit}
+					<div class="rounded-lg bg-indigo-50 border border-indigo-100 p-4">
+						<div class="flex items-start gap-3">
+							<AlertCircle class="h-5 w-5 text-indigo-600 shrink-0 mt-0.5" />
+							<div>
+								<p class="text-sm font-bold text-indigo-900">{limitMessage}</p>
+								<p class="text-xs text-indigo-600 mt-1">Upgrade now to unlock unlimited sites and professional features.</p>
+								<a href="https://buy.polar.sh/polar_cl_wI21HXqPa8S1S3W6Y9lBK0cuwU0gNfPdjUb9l4HgmLO" target="_blank" rel="noopener noreferrer" class="inline-block mt-3 text-xs font-bold text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors">
+									Upgrade for $2
+								</a>
+							</div>
+						</div>
+					</div>
+				{/if}
+
 				{#if error}
 					<div class="rounded-lg bg-red-50 border border-red-200 p-3">
 						<p class="text-sm text-red-700">{error}</p>
 					</div>
 				{/if}
 
-				<Input label="Site name" placeholder="acme-marketing" required bind:value={name} />
-				<Input label="Domain" placeholder="acme.com" required bind:value={domain} />
-				<Input label="GitHub repository" placeholder="owner/repo-name" required bind:value={repo} />
+				<Input label="Site name" placeholder="acme-marketing" required bind:value={name} disabled={loading || overLimit} />
+				<Input label="Domain" placeholder="acme.com" required bind:value={domain} disabled={loading || overLimit} />
+				<Input label="GitHub repository" placeholder="owner/repo-name" required bind:value={repo} disabled={loading || overLimit} />
 
 				<!-- Project type selector -->
 				<div class="border-t border-gray-100 pt-4 mt-4">
@@ -137,7 +169,8 @@
 						<button
 							type="button"
 							onclick={() => projectType = 'static'}
-							class="rounded-lg border px-3 py-2.5 text-left text-sm transition-colors cursor-pointer
+							disabled={loading || overLimit}
+							class="rounded-lg border px-3 py-2.5 text-left text-sm transition-colors cursor-pointer disabled:opacity-50
 								{projectType === 'static'
 									? 'border-gray-900 bg-gray-50 text-gray-900'
 									: 'border-gray-200 text-gray-500 hover:border-gray-300'}"
@@ -148,7 +181,8 @@
 						<button
 							type="button"
 							onclick={() => projectType = 'build'}
-							class="rounded-lg border px-3 py-2.5 text-left text-sm transition-colors cursor-pointer
+							disabled={loading || overLimit}
+							class="rounded-lg border px-3 py-2.5 text-left text-sm transition-colors cursor-pointer disabled:opacity-50
 								{projectType === 'build'
 									? 'border-gray-900 bg-gray-50 text-gray-900'
 									: 'border-gray-200 text-gray-500 hover:border-gray-300'}"
@@ -159,7 +193,8 @@
 						<button
 							type="button"
 							onclick={() => projectType = 'backend'}
-							class="rounded-lg border px-3 py-2.5 text-left text-sm transition-colors cursor-pointer
+							disabled={loading || overLimit}
+							class="rounded-lg border px-3 py-2.5 text-left text-sm transition-colors cursor-pointer disabled:opacity-50
 								{projectType === 'backend'
 									? 'border-gray-900 bg-gray-50 text-gray-900'
 									: 'border-gray-200 text-gray-500 hover:border-gray-300'}"
@@ -173,16 +208,16 @@
 				<!-- Build settings -->
 				<div class="space-y-3">
 					<div class="grid grid-cols-2 gap-3">
-						<Input label="Branch" placeholder="main" bind:value={branch} />
+						<Input label="Branch" placeholder="main" bind:value={branch} disabled={loading || overLimit} />
 						{#if projectType !== 'backend'}
-							<Input label="Output directory" placeholder={projectType === 'static' ? '.' : 'dist'} bind:value={outputDir} />
+							<Input label="Output directory" placeholder={projectType === 'static' ? '.' : 'dist'} bind:value={outputDir} disabled={loading || overLimit} />
 						{/if}
 					</div>
 					{#if projectType === 'build' || projectType === 'backend'}
-						<Input label="Build command" placeholder="npm run build" bind:value={buildCommand} />
+						<Input label="Build command" placeholder="npm run build" bind:value={buildCommand} disabled={loading || overLimit} />
 					{/if}
 					{#if projectType === 'backend'}
-						<Input label="Start command" placeholder="node dist/index.js" bind:value={startCommand} />
+						<Input label="Start command" placeholder="node dist/index.js" bind:value={startCommand} disabled={loading || overLimit} />
 					{/if}
 				</div>
 
@@ -204,8 +239,8 @@
 					>
 						Cancel
 					</Button>
-					<Button class="flex-1" type="submit" disabled={loading}>
-						{loading ? 'Creating...' : 'Create Site'}
+					<Button class="flex-1" type="submit" disabled={loading || overLimit}>
+						{loading ? 'Creating...' : overLimit ? 'Limit Reached' : 'Create Site'}
 					</Button>
 				</div>
 			</form>

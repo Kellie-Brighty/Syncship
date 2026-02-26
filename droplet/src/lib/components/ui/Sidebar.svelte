@@ -1,10 +1,43 @@
 <script lang="ts">
-	import { Droplets, LayoutDashboard, Globe, Settings, LogOut, CodeSquare, X, ShieldCheck } from 'lucide-svelte';
+	import { Droplets, LayoutDashboard, Globe, Settings, LogOut, CodeSquare, X, ShieldCheck, Rocket, Zap } from 'lucide-svelte';
 	import { page } from '$app/stores';
 	import { currentUser } from '$lib/stores/auth';
 	import LogoutModal from './LogoutModal.svelte';
+	import { getUserPlan, LIMITS } from '$lib/firebase/services/payments';
+	import { getSites } from '$lib/firebase/services/sites';
+	import { getTotalDeploymentCount } from '$lib/firebase/services/deployments';
 
 	let { mobileMenuOpen = $bindable(false) } = $props();
+
+	// Plan & Usage State
+	let userPlan = $state<any>(null);
+	let siteCount = $state(0);
+	let deploymentCount = $state(0);
+	let loadingUsage = $state(true);
+
+	$effect(() => {
+		const user = $currentUser;
+		if (user) {
+			loadUsage(user.uid);
+		}
+	});
+
+	async function loadUsage(uid: string) {
+		try {
+			const [plan, sites, totalDeploys] = await Promise.all([
+				getUserPlan(uid),
+				getSites(uid),
+				getTotalDeploymentCount(uid)
+			]);
+			userPlan = plan;
+			siteCount = sites.length;
+			deploymentCount = totalDeploys;
+		} catch (err) {
+			console.error('Sidebar usage load error:', err);
+		} finally {
+			loadingUsage = false;
+		}
+	}
 
 	const navigation = $derived([
 		{ name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -24,14 +57,14 @@
 		return false;
 	}
 
-	function getInitials(user: { displayName?: string | null; email?: string | null }): string {
+	function getInitials(user: any): string {
 		if (user.displayName) {
-			return user.displayName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+			return user.displayName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase();
 		}
 		return (user.email?.[0] ?? '?').toUpperCase();
 	}
 
-	function getDisplayName(user: { displayName?: string | null; email?: string | null }): string {
+	function getDisplayName(user: any): string {
 		return user.displayName || user.email?.split('@')[0] || 'User';
 	}
 </script>
@@ -69,6 +102,44 @@
 					{/each}
 				</ul>
 			</li>
+
+			<!-- Usage Block (Free Users) -->
+			{#if !loadingUsage && userPlan?.plan === 'free' && !userPlan?.isWhitelisted}
+				<li class="mt-4">
+					<div class="rounded-xl bg-gray-50 p-4 border border-gray-100">
+						<div class="flex items-center gap-2 mb-3">
+							<Zap class="h-3.5 w-3.5 text-indigo-600" />
+							<span class="text-xs font-bold text-gray-900 uppercase tracking-wider">Free Tier Usage</span>
+						</div>
+						
+						<div class="space-y-3">
+							<div>
+								<div class="flex justify-between text-[10px] font-bold text-gray-500 uppercase mb-1">
+									<span>Sites</span>
+									<span>{siteCount}/{LIMITS.free.sites}</span>
+								</div>
+								<div class="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+									<div class="h-full bg-indigo-600 rounded-full transition-all duration-500" style="width: {Math.min((siteCount / LIMITS.free.sites) * 100, 100)}%"></div>
+								</div>
+							</div>
+							
+							<div>
+								<div class="flex justify-between text-[10px] font-bold text-gray-500 uppercase mb-1">
+									<span>Deployments</span>
+									<span>{deploymentCount}/{LIMITS.free.deployments}</span>
+								</div>
+								<div class="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+									<div class="h-full bg-indigo-600 rounded-full transition-all duration-500" style="width: {Math.min((deploymentCount / LIMITS.free.deployments) * 100, 100)}%"></div>
+								</div>
+							</div>
+						</div>
+
+						<a href="https://buy.polar.sh/polar_cl_wI21HXqPa8S1S3W6Y9lBK0cuwU0gNfPdjUb9l4HgmLO" target="_blank" rel="noopener noreferrer" class="mt-4 flex items-center justify-center gap-1.5 w-full rounded-lg bg-indigo-600 py-2 text-xs font-bold text-white hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200/50">
+							<Rocket class="h-3 w-3" /> Upgrade for $2
+						</a>
+					</div>
+				</li>
+			{/if}
 
 			<!-- Bottom section: Profile + Logout -->
 			<li class="mt-auto space-y-3 pb-4">

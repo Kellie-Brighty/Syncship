@@ -4,7 +4,9 @@ export interface User {
   uid: string;
   email: string;
   displayName?: string;
-  role: 'admin' | 'client';
+  role: 'admin' | 'user';
+  plan: 'free' | 'lifetime' | 'pro';
+  isWhitelisted?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

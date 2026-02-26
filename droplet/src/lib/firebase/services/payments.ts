@@ -43,6 +43,14 @@ export async function getUserPlan(uid: string): Promise<UserPlan> {
 	};
 }
 
+
+export const LIMITS = {
+	free: {
+		sites: 1,
+		deployments: 3
+	}
+};
+
 /**
  * Checks if a user has active access (either lifetime, whitelisted, or active sub)
  */
@@ -61,4 +69,43 @@ export async function checkAccess(uid: string, email?: string): Promise<boolean>
 	}
 
 	return false;
+}
+
+/**
+ * Checks if a user is allowed to perform an action based on their plan limits
+ */
+export async function canCreateSite(uid: string, currentSiteCount: number): Promise<{ allowed: boolean; message?: string }> {
+	const userPlan = await getUserPlan(uid);
+	
+	// Admin / Whitelist / Lifetime / Pro have no site limits for now
+	if (userPlan.isWhitelisted || userPlan.plan === 'lifetime' || userPlan.plan === 'pro') {
+		return { allowed: true };
+	}
+
+	if (currentSiteCount >= LIMITS.free.sites) {
+		return { 
+			allowed: false, 
+			message: `You've reached the free limit of ${LIMITS.free.sites} site. Upgrade for unlimited access.`
+		};
+	}
+
+	return { allowed: true };
+}
+
+export async function canCreateDeployment(uid: string, totalDeploymentCount: number): Promise<{ allowed: boolean; message?: string }> {
+	const userPlan = await getUserPlan(uid);
+	
+	// Admin / Whitelist / Lifetime / Pro have no deployment limits for now
+	if (userPlan.isWhitelisted || userPlan.plan === 'lifetime' || userPlan.plan === 'pro') {
+		return { allowed: true };
+	}
+
+	if (totalDeploymentCount >= LIMITS.free.deployments) {
+		return { 
+			allowed: false, 
+			message: `You've reached the free limit of ${LIMITS.free.deployments} deployments. Upgrade for unlimited access.`
+		};
+	}
+
+	return { allowed: true };
 }

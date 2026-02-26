@@ -56,9 +56,18 @@ export async function getSiteById(id: string): Promise<Site | null> {
   return toSite(snapshot.id, snapshot.data());
 }
 
+import { canCreateSite } from './payments';
+
 export async function createSite(
   data: Omit<Site, 'id' | 'createdAt' | 'updatedAt' | 'lastDeployAt' | 'status'>
 ): Promise<string> {
+  const sites = await getSites(data.ownerId);
+  const { allowed, message } = await canCreateSite(data.ownerId, sites.length);
+  
+  if (!allowed) {
+    throw new Error(message || 'Site limit reached');
+  }
+
   const docRef = await addDoc(collection(db, COLLECTION), {
     ...data,
     status: 'pending',

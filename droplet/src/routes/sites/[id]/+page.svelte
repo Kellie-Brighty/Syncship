@@ -12,7 +12,8 @@
 	import { goto } from '$app/navigation';
 	import { currentUser } from '$lib/stores/auth';
 	import { getSiteById, updateSite, deleteSite } from '$lib/firebase/services/sites';
-	import { createDeployment, cancelDeployment, getPaginatedDeployments } from '$lib/firebase/services/deployments';
+	import { createDeployment, cancelDeployment, getPaginatedDeployments, getTotalDeploymentCount } from '$lib/firebase/services/deployments';
+	import { canCreateDeployment } from '$lib/firebase/services/payments';
 	import type { Site, Deployment } from '$lib/types/models';
 	import { get } from 'svelte/store';
 	import { doc, collection, query, where, orderBy, onSnapshot, getDoc, updateDoc, deleteDoc, limit, getCountFromServer, type QueryDocumentSnapshot } from 'firebase/firestore';
@@ -24,6 +25,11 @@
 	let deployments = $state<Deployment[]>([]);
 	let loading = $state(true);
 	let activeTab = $state<'overview' | 'deployments' | 'settings'>('overview');
+
+	// Limit state
+	let overDeploymentLimit = $state(false);
+	let deploymentLimitMessage = $state('');
+	let totalUserDeployments = $state(0);
 
 	// DNS State
 	let dropletIp = $state<string | null>(null);
@@ -138,6 +144,7 @@
 			startListening(id, user.uid);
 			fetchDropletIp(user.uid);
 			checkGithubToken(user.uid);
+			checkDeploymentLimits(user.uid);
 		}
 	});
 
@@ -159,6 +166,14 @@
 		} catch (e) {
 			console.error('Failed to fetch droplet IP:', e);
 		}
+	}
+
+	async function checkDeploymentLimits(uid: string) {
+		const total = await getTotalDeploymentCount(uid);
+		totalUserDeployments = total;
+		const { allowed, message } = await canCreateDeployment(uid, total);
+		overDeploymentLimit = !allowed;
+		deploymentLimitMessage = message || '';
 	}
 
 	async function checkDns(domain: string) {
@@ -408,7 +423,7 @@
 	}
 
 	async function triggerDeploy() {
-		if (!site || deploying) return;
+		if (!site || deploying || overDeploymentLimit) return;
 		const user = get(currentUser);
 		if (!user) return;
 
@@ -431,6 +446,9 @@
 
 			await updateSite(site.id, { status: 'building' });
 			activeTab = 'deployments';
+			
+			// Refresh limit check
+			checkDeploymentLimits(user.uid);
 		} catch (err) {
 			console.error('Failed to trigger deploy:', err);
 		} finally {
@@ -551,6 +569,26 @@
 			<ArrowLeft class="h-3.5 w-3.5" />
 			Back to Sites
 		</a>
+
+		{#if overDeploymentLimit}
+			<div class="mb-6 rounded-xl bg-indigo-50 border border-indigo-100 p-4 ring-1 ring-inset ring-indigo-500/10">
+				<div class="flex items-start gap-3">
+					<div class="rounded-lg bg-indigo-600 p-1.5 shrink-0">
+						<Rocket class="h-4 w-4 text-white" />
+					</div>
+					<div class="flex-1 sm:flex sm:items-center sm:justify-between">
+						<div>
+							<p class="text-sm font-bold text-indigo-900">{deploymentLimitMessage}</p>
+							<p class="text-xs text-indigo-600 mt-0.5 font-medium">Capture the full power of SyncShip with unlimited deployments.</p>
+						</div>
+						<a href="https://buy.polar.sh/polar_cl_wI21HXqPa8S1S3W6Y9lBK0cuwU0gNfPdjUb9l4HgmLO" target="_blank" rel="noopener noreferrer" class="inline-block mt-3 sm:mt-0 text-xs font-bold text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-600/20 whitespace-nowrap">
+							Unlock Unlimited for $2
+						</a>
+					</div>
+				</div>
+			</div>
+		{/if}
+
 		<div class="sm:flex sm:items-center sm:justify-between">
 			<div class="flex items-center gap-3">
 				<div class="rounded-lg bg-gray-100 p-2.5">

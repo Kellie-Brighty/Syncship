@@ -101,9 +101,18 @@ export async function getSiteDeploymentCount(siteId: string): Promise<number> {
   return snapshot.data().count;
 }
 
+import { canCreateDeployment } from './payments';
+
 export async function createDeployment(
   data: Omit<Deployment, 'id' | 'createdAt'>
 ): Promise<string> {
+  const total = await getTotalDeploymentCount(data.ownerId);
+  const { allowed, message } = await canCreateDeployment(data.ownerId, total);
+
+  if (!allowed) {
+    throw new Error(message || 'Deployment limit reached');
+  }
+
   const docRef = await addDoc(collection(db, COLLECTION), {
     ...data,
     createdAt: serverTimestamp()
