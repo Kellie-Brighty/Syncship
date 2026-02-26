@@ -131,9 +131,9 @@
 <!-- ─── STATS BAR ──────────────────────────────────────────────── -->
 <section class="border-y border-gray-200/60 py-10">
 	<div class="mx-auto max-w-5xl px-6">
-		<div class="grid grid-cols-3 divide-x divide-gray-200">
+		<div class="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-200">
 			{#each [['50+', 'Sites Deployed'], ['99.9%', 'Uptime'], ['< 60s', 'Avg Deploy Time']] as [val, label]}
-				<div class="reveal fade-up text-center px-8">
+				<div class="reveal fade-up text-center py-6 sm:py-0 sm:px-8">
 					<p class="text-3xl font-black text-gray-900 tracking-tight">{val}</p>
 					<p class="mt-1 text-sm font-medium text-gray-500">{label}</p>
 				</div>
@@ -183,8 +183,8 @@
 			<p class="mt-4 text-gray-500">Why thousands are coming back to their own servers.</p>
 		</div>
 
-		<div class="reveal fade-up overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-			<table class="w-full text-left border-collapse">
+		<div class="reveal fade-up overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+			<table class="w-full text-left border-collapse min-w-[600px] sm:min-w-0">
 				<thead>
 					<tr class="bg-gray-50/80">
 						<th class="px-6 py-4 text-xs font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">feature</th>
