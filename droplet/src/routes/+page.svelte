@@ -302,7 +302,7 @@
 				</ul>
 
 				<a
-					href="https://buy.polar.sh/polar_cl_3F8ljAeCCszNjClyqG3JXVSB3u5ITb3pAly5r0mP2RH"
+					href="https://buy.polar.sh/polar_cl_wI21HXqPa8S1S3W6Y9lBK0cuwU0gNfPdjUb9l4HgmLO"
 					target="_blank"
 					rel="noopener noreferrer"
 					class="mt-8 block rounded-xl bg-white py-3 text-center text-sm font-bold text-gray-900 hover:bg-gray-100 transition-colors shadow"
