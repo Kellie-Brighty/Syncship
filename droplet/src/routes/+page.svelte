@@ -64,16 +64,16 @@
 	<div class="relative z-10 mx-auto max-w-5xl px-6 text-center">
 
 		<h1 class="reveal fade-up delay-100 text-5xl sm:text-6xl lg:text-7xl font-black text-gray-900 tracking-tight leading-[1.05]">
-			Ship Your Clients' Sites.
+			Own Your Server.
 			<br />
-			<span class="relative inline-block mt-2">
-				<span class="relative z-10">Not Your Sanity.</span>
-				<span class="absolute inset-x-0 bottom-1 h-4 bg-gray-200/70 -rotate-1 rounded"></span>
+			<span class="relative inline-block mt-2 text-indigo-600">
+				<span class="relative z-10">Deploy Like Pro.</span>
+				<span class="absolute inset-x-0 bottom-1 h-4 bg-indigo-100/70 -rotate-1 rounded"></span>
 			</span>
 		</h1>
 
 		<p class="reveal fade-up delay-200 mt-7 text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed font-medium">
-			Git-push. Auto-build. Custom domain. Free SSL. All on <strong class="text-gray-900">your own Ubuntu server</strong>. No Vercel. No lock-in. No per-site fees.
+			Stop fighting "Serverless" limits. Get the one-click experience on <strong class="text-gray-900">your own hardware</strong>. No vendor lock-in. No per-site fees. Just your code on your server.
 		</p>
 
 		<div class="reveal fade-up delay-300 mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -134,12 +134,12 @@
 
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 			{#each [
-				{ Icon: Terminal, title: 'Live Deployment Logs', desc: "Color-coded terminal streams live to your dashboard. Know exactly what's happening at every build step." },
-				{ Icon: Shield, title: 'Auto SSL Certificates', desc: "Free Let's Encrypt certs provisioned automatically. Every site gets HTTPS from the first deploy." },
-				{ Icon: Activity, title: 'Live Server Stats', desc: 'Real-time CPU & RAM usage pulled directly from your Ubuntu droplet. Stay on top of server health.' },
-				{ Icon: Globe, title: 'Custom Domains', desc: 'Point any domain to your droplet. Nginx configured and reloaded automatically every single time.' },
-				{ Icon: GitBranch, title: 'Git-Based Deploys', desc: 'Connect your GitHub repo once. Hit Re-deploy to pull the latest commit, build, and go live instantly.' },
-				{ Icon: Rocket, title: 'Zero Vendor Lock-In', desc: 'Your server, your code, your data. Cancel anytime without losing a single deployment or config.' }
+				{ Icon: Terminal, title: 'Live PM2 Logs', desc: "Stream live logs from your PM2 processes. Color-coded build output means you never have to SSH in to see what's happening." },
+				{ Icon: Shield, title: 'Certbot Automation', desc: "Production-grade encryption via Let's Encrypt. Deploys SSL certs and handles HTTPS auto-renewal on your behalf." },
+				{ Icon: Activity, title: 'Bare-Metal Monitoring', desc: 'Real-time CPU & RAM metrics straight from your Linux system. Know exactly how your server is breathing.' },
+				{ Icon: Globe, title: 'Nginx Reverse Proxy', desc: 'SyncShip manages your Nginx configs. Point a domain, and we handle the routing, headers, and performance tweaks.' },
+				{ Icon: GitBranch, title: 'One-Click Pipeline', desc: 'Push to GitHub, hit Deploy. We pull the code, install dependencies, build the assets, and restart the process.' },
+				{ Icon: Rocket, title: 'Total BYOS Ownership', desc: "Bring Your Own Server. We don't host your data — you do. Zero lock-in, zero overage fees, 100% control." }
 			] as { Icon, title, desc }, i}
 				<div class="reveal fade-up feature-card group rounded-2xl border border-gray-200/80 bg-white/70 backdrop-blur-sm p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
 					style="animation-delay: {i * 80}ms">
@@ -150,6 +150,50 @@
 					<p class="text-sm text-gray-500 leading-relaxed">{desc}</p>
 				</div>
 			{/each}
+		</div>
+	</div>
+</section>
+
+<!-- ─── COMPARISON ───────────────────────────────────────────── -->
+<section class="py-28 bg-gray-50/50">
+	<div class="mx-auto max-w-5xl px-6">
+		<div class="text-center mb-16 reveal fade-up">
+			<h2 class="text-3xl font-black text-gray-900 tracking-tight">The Freedom Comparison</h2>
+			<p class="mt-4 text-gray-500">Why thousands are coming back to their own servers.</p>
+		</div>
+
+		<div class="reveal fade-up overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+			<table class="w-full text-left border-collapse">
+				<thead>
+					<tr class="bg-gray-50/80">
+						<th class="px-6 py-4 text-xs font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">feature</th>
+						<th class="px-6 py-4 text-xs font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">Standard Cloud</th>
+						<th class="px-6 py-4 text-xs font-bold uppercase tracking-widest text-indigo-600 border-b border-gray-100">SyncShip (BYOS)</th>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-gray-100">
+					<tr>
+						<td class="px-6 py-4 text-sm font-semibold text-gray-900">Cost Structure</td>
+						<td class="px-6 py-4 text-sm text-gray-500">Per-user / Per-site / Overage fees</td>
+						<td class="px-6 py-4 text-sm text-gray-900 font-medium">Flat server fee (~$5/mo)</td>
+					</tr>
+					<tr>
+						<td class="px-6 py-4 text-sm font-semibold text-gray-900">Data Ownership</td>
+						<td class="px-6 py-4 text-sm text-gray-500">Hosted in their ecosystem</td>
+						<td class="px-6 py-4 text-sm text-gray-900 font-medium">100% Your Infrastructure</td>
+					</tr>
+					<tr>
+						<td class="px-6 py-4 text-sm font-semibold text-gray-900">Backend Support</td>
+						<td class="px-6 py-4 text-sm text-gray-500">Serverless cold-starts & limits</td>
+						<td class="px-6 py-4 text-sm text-gray-900 font-medium">Persistent PM2 processes</td>
+					</tr>
+					<tr>
+						<td class="px-6 py-4 text-sm font-semibold text-gray-900">Environment</td>
+						<td class="px-6 py-4 text-sm text-gray-500">Proprietary "Edge" runtime</td>
+						<td class="px-6 py-4 text-sm text-gray-900 font-medium">Full Linux control</td>
+					</tr>
+				</tbody>
+			</table>
 		</div>
 	</div>
 </section>
@@ -188,11 +232,10 @@
 		<div class="text-center mb-16 reveal fade-up">
 			<p class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Pricing</p>
 			<h2 class="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">
-				One price.<br /><span class="text-gray-400">Yours forever.</span>
+				Unlimited Scale.<br /><span class="text-gray-400">Fixed Tiny Cost.</span>
 			</h2>
 			<p class="mt-4 text-gray-500 max-w-md mx-auto">
-				We're giving founding members lifetime access before we switch to a monthly plan.
-				Lock in now — this offer won't last.
+				Pay for the tool once. Pay your server provider directly for the iron. No middleman markup. No bandwidth tax.
 			</p>
 		</div>
 
@@ -320,9 +363,9 @@
 		</div>
 		<div class="mt-8 pt-6 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
 			<p class="text-xs text-gray-400">© 2026 SyncShip. Built with ♥ for agencies.</p>
-			<div class="flex items-center gap-6">
-				<a href="/privacy" class="text-xs text-gray-400 hover:text-gray-700 transition-colors">Privacy Policy</a>
-				<a href="/terms" class="text-xs text-gray-400 hover:text-gray-700 transition-colors">Terms & Conditions</a>
+			<div class="flex items-center gap-8">
+				<a href="/privacy" class="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors underline decoration-gray-200 underline-offset-4 hover:decoration-gray-400">Privacy Policy</a>
+				<a href="/terms" class="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors underline decoration-gray-200 underline-offset-4 hover:decoration-gray-400">Terms & Conditions</a>
 			</div>
 		</div>
 	</div>

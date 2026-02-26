@@ -549,7 +549,7 @@
 				</div>
 			</div>
 			<div class="mt-4 sm:mt-0 flex gap-2">
-				<Button variant="outline" onclick={triggerDeploy} disabled={site.status === 'building' || deploying}>
+				<Button onclick={triggerDeploy} disabled={site.status === 'building' || deploying}>
 					{#if site.status === 'building' || deploying}
 						<Loader class="-ml-0.5 mr-1.5 h-4 w-4 animate-spin" />
 						Building...

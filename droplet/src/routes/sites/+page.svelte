@@ -118,32 +118,29 @@
 	<div class="grid gap-3">
 		{#each filteredSites as site}
 			{@const config = statusConfig[site.status] ?? statusConfig['pending']}
-			<Card class="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:border-gray-300 transition-colors gap-4 sm:gap-0">
-				<div class="flex items-start sm:items-center gap-3">
-					<div class="rounded-lg bg-gray-100 p-2.5 shrink-0 mt-1 sm:mt-0">
-						<Globe class="h-5 w-5 text-gray-600" />
-					</div>
-					<div class="min-w-0">
-						<div class="flex flex-wrap items-center gap-2">
-							<h3 class="text-sm font-semibold text-gray-900 truncate">{site.name}</h3>
-							<span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium shrink-0 {config.classes}">
-								<config.icon class="h-3 w-3 {site.status === 'building' ? 'animate-spin' : ''}" />
-								{config.label}
-							</span>
+			<a href="/sites/{site.id}" class="block no-underline text-inherit">
+				<Card class="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer gap-4 sm:gap-0">
+					<div class="flex items-start sm:items-center gap-3">
+						<div class="rounded-lg bg-gray-100 p-2.5 shrink-0 mt-1 sm:mt-0">
+							<Globe class="h-5 w-5 text-gray-600" />
 						</div>
-						<div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
-							<span class="flex items-center gap-1 truncate"><ExternalLink class="h-3 w-3 shrink-0" />{site.domain}</span>
-							<span class="flex items-center gap-1 truncate"><GitBranch class="h-3 w-3 shrink-0" />{site.repo} ({site.branch})</span>
-							<span class="flex items-center gap-1 shrink-0"><Clock class="h-3 w-3 shrink-0" />{timeAgo(site.lastDeployAt)}</span>
+						<div class="min-w-0">
+							<div class="flex flex-wrap items-center gap-2">
+								<h3 class="text-sm font-semibold text-gray-900 truncate">{site.name}</h3>
+								<span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium shrink-0 {config.classes}">
+									<config.icon class="h-3 w-3 {site.status === 'building' ? 'animate-spin' : ''}" />
+									{config.label}
+								</span>
+							</div>
+							<div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
+								<span class="flex items-center gap-1 truncate"><ExternalLink class="h-3 w-3 shrink-0" />{site.domain}</span>
+								<span class="flex items-center gap-1 truncate"><GitBranch class="h-3 w-3 shrink-0" />{site.repo} ({site.branch})</span>
+								<span class="flex items-center gap-1 shrink-0"><Clock class="h-3 w-3 shrink-0" />{timeAgo(site.lastDeployAt)}</span>
+							</div>
 						</div>
 					</div>
-				</div>
-				<div class="w-full sm:w-auto flex justify-end mt-2 sm:mt-0">
-					<a href="/sites/{site.id}" class="w-full sm:w-auto">
-						<Button variant="ghost" size="sm" class="w-full sm:w-auto bg-gray-50 sm:bg-transparent border sm:border-transparent border-gray-200">View Site</Button>
-					</a>
-				</div>
-			</Card>
+				</Card>
+			</a>
 		{/each}
 	</div>
 {/if}
