@@ -13,6 +13,16 @@ async function boot() {
   // This physically locks the daemon into the `firestore.rules` sandbox.
   const SYNC_USER_ID = await authenticateDaemon();
 
+  // Fetch Droplet IP once on boot
+  let dropletIp = '';
+  try {
+    const ipRes = await fetch('https://api.ipify.org');
+    dropletIp = await ipRes.text();
+    console.log(`🌐 Droplet Public IP: ${dropletIp}`);
+  } catch (err) {
+    console.warn(`⚠️ Failed to fetch Droplet IP:`, err);
+  }
+
   // Heartbeat: write to Firestore every 5s so dashboard knows we're alive and has fresh stats
   function sendHeartbeat() {
     osutils.cpuUsage(async (cpuPercent) => {
@@ -34,7 +44,8 @@ async function boot() {
           cpu: cpuPercent * 100,
           memory: memPercent,
           totalRamGb: totalRam,
-          usedRamGb: usedRam
+          usedRamGb: usedRam,
+          dropletIp
         });
       } catch (err) {
         console.error('Heartbeat failed:', err);

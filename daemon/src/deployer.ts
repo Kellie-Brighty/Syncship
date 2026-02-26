@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import cliProgress from 'cli-progress';
+import dns from 'dns';
 
 const execAsync = promisify(exec);
 
@@ -218,12 +219,32 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
     await execStream('systemctl reload nginx');
     await log('Nginx configured and reloaded');
 
-    // 6. SSL certificate (Certbot)
+    // 6. SSL certificate (Certbot) & DNS Check
     if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
     await log('Setting up SSL...', 1, 'Setting up SSL');
+
     try {
-      await execStream(`certbot --nginx -d ${cleanDomain} --non-interactive --agree-tos --email admin@${cleanDomain} --redirect`, { timeout: 120000 });
-      await log('SSL certificate installed');
+      // Fetch Droplet IP
+      const ipRes = await fetch('https://api.ipify.org');
+      const dropletIp = await ipRes.text();
+
+      // Check Domain DNS
+      let dnsMatches = false;
+      try {
+        const records = await dns.promises.resolve4(cleanDomain);
+        dnsMatches = records.includes(dropletIp);
+      } catch (dnsErr) {
+        // Domain might not exist yet or no A records
+        dnsMatches = false;
+      }
+
+      if (dnsMatches) {
+        await execStream(`certbot --nginx -d ${cleanDomain} --non-interactive --agree-tos --email admin@${cleanDomain} --redirect`, { timeout: 120000 });
+        await log('SSL certificate installed');
+      } else {
+        await log(`⚠️ DNS for ${cleanDomain} has not fully propagated to this Droplet's IP (${dropletIp}) yet. Skipping SSL generation.`);
+        await log('💡 The site is live on HTTP. Please wait ~10 minutes and click "Re-Deploy" to try installing SSL again.');
+      }
     } catch (sslErr: any) {
       await log(`SSL warning: ${sslErr.message} (site will still work on HTTP)`);
     }

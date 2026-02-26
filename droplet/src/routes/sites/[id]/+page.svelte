@@ -24,6 +24,11 @@
 	let loading = $state(true);
 	let activeTab = $state<'overview' | 'deployments' | 'settings'>('overview');
 
+	// DNS State
+	let dropletIp = $state<string | null>(null);
+	let dnsStatus = $state<'checking' | 'verified' | 'unverified' | null>(null);
+	let dnsError = $state<string | null>(null);
+
 	// Edit state
 	let editing = $state(false);
 	let editName = $state('');
@@ -119,7 +124,47 @@
 	$effect(() => {
 		const user = $currentUser;
 		const id = $page.params.id;
-		if (user && id) startListening(id, user.uid);
+		if (user && id) {
+			startListening(id, user.uid);
+			fetchDropletIp(user.uid);
+		}
+	});
+
+	async function fetchDropletIp(userId: string) {
+		try {
+			const snap = await getDoc(doc(db, 'serverStats', userId));
+			if (snap.exists() && snap.data().dropletIp) {
+				dropletIp = snap.data().dropletIp;
+			}
+		} catch (e) {
+			console.error('Failed to fetch droplet IP:', e);
+		}
+	}
+
+	async function checkDns(domain: string) {
+		if (!dropletIp || !domain) return;
+		dnsStatus = 'checking';
+		dnsError = null;
+		try {
+			const res = await fetch(`/api/dns?domain=${encodeURIComponent(domain)}`);
+			if (!res.ok) throw new Error('DNS check failed');
+			const data = await res.json();
+			if (data.records && data.records.includes(dropletIp)) {
+				dnsStatus = 'verified';
+			} else {
+				dnsStatus = 'unverified';
+			}
+		} catch (e: any) {
+			console.error(e);
+			dnsStatus = 'unverified';
+			dnsError = e.message;
+		}
+	}
+
+	$effect(() => {
+		if (site && site.domain && dropletIp && dnsStatus === null) {
+			checkDns(site.domain);
+		}
 	});
 
 	// Auto-expand the currently building deployment row
@@ -457,7 +502,7 @@
 							{status.label}
 						</span>
 					</div>
-					<div class="mt-0.5 flex items-center gap-1 text-sm text-gray-500">
+					<div class="mt-0.5 flex flex-wrap items-center gap-3 text-sm text-gray-500">
 						<button onclick={copyDomain} class="flex items-center gap-1 hover:text-gray-900 transition-colors cursor-pointer">
 							{site.domain}
 							{#if copied}
@@ -466,6 +511,21 @@
 								<Copy class="h-3 w-3" />
 							{/if}
 						</button>
+						
+						<!-- DNS Status Indicator -->
+						{#if dnsStatus === 'checking'}
+							<span class="flex items-center gap-1 text-xs text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full border border-yellow-200">
+								<Loader class="h-3 w-3 animate-spin"/> Checking DNS...
+							</span>
+						{:else if dnsStatus === 'verified'}
+							<div class="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-200" title="Domain is correctly pointed to your Droplet">
+								<CheckCircle class="h-3 w-3" /> DNS Propagated
+							</div>
+						{:else if dnsStatus === 'unverified'}
+							<div class="flex items-center gap-1 text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-200" title={`Domain A Record does not point to ${dropletIp || 'your server'}`}>
+								<XCircle class="h-3 w-3" /> DNS Not Propagated
+							</div>
+						{/if}
 					</div>
 				</div>
 			</div>
