@@ -1,4 +1,6 @@
+node_modules/
 daemon/service-account.json
 .env
 .env.*
 droplet/.env*
+test-*.ts
