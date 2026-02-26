@@ -146,10 +146,15 @@
 		dnsStatus = 'checking';
 		dnsError = null;
 		try {
-			const res = await fetch(`/api/dns?domain=${encodeURIComponent(domain)}`);
-			if (!res.ok) throw new Error('DNS check failed');
+			// Call Google Public DNS API directly from the browser (supports CORS)
+			const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+			const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(cleanDomain)}&type=A`);
+			if (!res.ok) throw new Error('DNS lookup failed');
 			const data = await res.json();
-			if (data.records && data.records.includes(dropletIp)) {
+			const records = (data.Answer || [])
+				.filter((r: { type: number }) => r.type === 1)
+				.map((r: { data: string }) => r.data);
+			if (records.includes(dropletIp)) {
 				dnsStatus = 'verified';
 			} else {
 				dnsStatus = 'unverified';
