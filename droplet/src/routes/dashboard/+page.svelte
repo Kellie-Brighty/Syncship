@@ -38,10 +38,10 @@
 			deployments = d;
 			totalDeployments = total;
 			
-			// Setup realtime listener for stats
+			// Setup realtime listener for stats for this specific user
 			unsubscribeStats = listenToServerStats((incomingStats) => {
 				stats = incomingStats;
-			}, 'live');
+			}, uid);
 		} catch (err) {
 			console.error('Failed to load dashboard data:', err);
 		} finally {
