@@ -377,19 +377,31 @@ function generateReverseProxyNginxConfig(domain: string, port: number): string {
 async function allocatePort(): Promise<number> {
   const BASE_PORT = 3001;
   try {
-    const { stdout } = await execAsync('pm2 jlist');
-    const processes = JSON.parse(stdout);
-    const usedPorts = new Set<number>();
-    for (const proc of processes) {
-      // Check env vars for PORT
-      const envPort = proc.pm2_env?.env?.PORT || proc.pm2_env?.PORT;
-      if (envPort) usedPorts.add(Number(envPort));
-    }
+    // Use ss to get ALL actually-bound TCP ports on the system.
+    // This catches processes not registered in pm2's env vars (e.g. grabh, kc, etc.)
+    const { stdout } = await execAsync("ss -tlnp | awk 'NR>1 {print $4}' | grep -oP '(?<=:)\\d+$'");
+    const usedPorts = new Set<number>(
+      stdout.split('\n').map(p => Number(p.trim())).filter(p => p > 0)
+    );
     let port = BASE_PORT;
     while (usedPorts.has(port)) port++;
     return port;
   } catch {
-    return BASE_PORT;
+    // Fallback: scan pm2 env vars
+    try {
+      const { stdout } = await execAsync('pm2 jlist');
+      const processes = JSON.parse(stdout);
+      const usedPorts = new Set<number>();
+      for (const proc of processes) {
+        const envPort = proc.pm2_env?.env?.PORT || proc.pm2_env?.PORT;
+        if (envPort) usedPorts.add(Number(envPort));
+      }
+      let port = BASE_PORT;
+      while (usedPorts.has(port)) port++;
+      return port;
+    } catch {
+      return BASE_PORT;
+    }
   }
 }
 
