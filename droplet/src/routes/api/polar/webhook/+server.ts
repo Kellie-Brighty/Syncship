@@ -1,23 +1,25 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { Webhook } from 'svix';
+import { Webhooks } from '@polar-sh/sdk/webhooks';
 import { adminDb } from '$lib/server/firebase-admin';
 import { POLAR_WEBHOOK_SECRET } from '$env/static/private';
 
 export const POST: RequestHandler = async ({ request }) => {
 	const rawBody = await request.text();
 
-	// Verify using Svix (Standard Webhooks)
-	// Polar secrets often start with 'polar_whs_', which Svix doesn't expect (it wants raw base64)
-	const cleanedSecret = POLAR_WEBHOOK_SECRET.replace('polar_whs_', '');
-	const wh = new Webhook(cleanedSecret);
+	const webhookHeaders = {
+		'webhook-id': request.headers.get('webhook-id') ?? '',
+		'webhook-timestamp': request.headers.get('webhook-timestamp') ?? '',
+		'webhook-signature': request.headers.get('webhook-signature') ?? ''
+	};
+
 	let event: Record<string, unknown>;
 
 	try {
-		event = wh.verify(rawBody, {
-			'webhook-id': request.headers.get('webhook-id') ?? '',
-			'webhook-timestamp': request.headers.get('webhook-timestamp') ?? '',
-			'webhook-signature': request.headers.get('webhook-signature') ?? ''
+		event = Webhooks.verify({
+			payload: rawBody,
+			headers: webhookHeaders,
+			secret: POLAR_WEBHOOK_SECRET
 		}) as Record<string, unknown>;
 	} catch (err) {
 		console.error('[Polar Webhook] Signature verification failed:', err);
