@@ -46,6 +46,7 @@
 	let editBuildCommand = $state('');
 	let editOutputDir = $state('');
 	let editStartCommand = $state('');
+	let editSiteType = $state<'static' | 'backend'>('static');
 	let saving = $state(false);
 
 	// Delete state
@@ -345,6 +346,7 @@
 		editBuildCommand = site.buildCommand;
 		editOutputDir = site.outputDir;
 		editStartCommand = site.startCommand || '';
+		editSiteType = site.siteType || 'static';
 		editing = true;
 	}
 
@@ -359,6 +361,7 @@
 				branch: editBranch.trim(),
 				buildCommand: editBuildCommand.trim(),
 				outputDir: editOutputDir.trim(),
+				siteType: editSiteType,
 				startCommand: editStartCommand.trim() || undefined
 			});
 			editing = false;
@@ -1015,8 +1018,33 @@
 						<Input label="Output directory" bind:value={editOutputDir} />
 					</div>
 					<Input label="Build command" placeholder="Leave empty for static sites" bind:value={editBuildCommand} />
-					{#if site?.siteType === 'backend'}
-						<Input label="Start command" placeholder="node dist/index.js" bind:value={editStartCommand} />
+					<!-- Site Type Selector -->
+					<div>
+						<label class="block text-xs font-semibold text-gray-700 mb-1">Site Type</label>
+						<div class="flex gap-2">
+							<button
+								type="button"
+								onclick={() => editSiteType = 'static'}
+								class="flex-1 rounded-lg border py-2 text-xs font-semibold transition-colors {editSiteType === 'static' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}"
+							>
+								Static (HTML/React/Vue)
+							</button>
+							<button
+								type="button"
+								onclick={() => editSiteType = 'backend'}
+								class="flex-1 rounded-lg border py-2 text-xs font-semibold transition-colors {editSiteType === 'backend' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'}"
+							>
+								Backend (Node.js / SSR)
+							</button>
+						</div>
+						{#if editSiteType === 'backend'}
+							<p class="mt-1.5 text-xs text-gray-400">App will be started via pm2 and proxied through Nginx.</p>
+						{:else}
+							<p class="mt-1.5 text-xs text-gray-400">Static files served directly by Nginx. No server process.</p>
+						{/if}
+					</div>
+					{#if editSiteType === 'backend'}
+						<Input label="Start command" placeholder="node build/index.js" bind:value={editStartCommand} />
 					{/if}
 					<div class="flex gap-2 pt-2">
 						<Button onclick={saveEdits} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
