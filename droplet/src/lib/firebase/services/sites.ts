@@ -80,10 +80,11 @@ export async function createSite(
 
 export async function updateSite(id: string, data: Partial<Site>): Promise<void> {
   const ref = doc(db, COLLECTION, id);
-  await updateDoc(ref, {
-    ...data,
-    updatedAt: serverTimestamp()
-  });
+  // Firestore rejects `undefined` values — strip them out before updating
+  const clean = Object.fromEntries(
+    Object.entries({ ...data, updatedAt: serverTimestamp() }).filter(([, v]) => v !== undefined)
+  );
+  await updateDoc(ref, clean);
 }
 
 export async function deleteSite(id: string): Promise<void> {
