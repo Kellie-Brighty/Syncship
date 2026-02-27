@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { Webhooks } from '@polar-sh/sdk/webhooks';
+import { validateEvent } from '@polar-sh/sdk/webhooks';
 import { adminDb } from '$lib/server/firebase-admin';
 import { POLAR_WEBHOOK_SECRET } from '$env/static/private';
 
@@ -16,11 +16,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	let event: Record<string, unknown>;
 
 	try {
-		event = Webhooks.verify({
-			payload: rawBody,
-			headers: webhookHeaders,
-			secret: POLAR_WEBHOOK_SECRET
-		}) as Record<string, unknown>;
+		event = validateEvent(rawBody, webhookHeaders, POLAR_WEBHOOK_SECRET) as Record<string, unknown>;
 	} catch (err) {
 		console.error('[Polar Webhook] Signature verification failed:', err);
 		return json({ error: 'Invalid signature' }, { status: 401 });
