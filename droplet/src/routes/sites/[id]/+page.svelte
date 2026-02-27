@@ -364,6 +364,18 @@
 				siteType: editSiteType,
 				startCommand: editStartCommand.trim() || undefined
 			});
+			// Refresh local state so the read view shows the updated values immediately
+			site = {
+				...site,
+				name: editName.trim(),
+				domain: editDomain.trim(),
+				repo: editRepo.trim(),
+				branch: editBranch.trim(),
+				buildCommand: editBuildCommand.trim(),
+				outputDir: editOutputDir.trim(),
+				siteType: editSiteType,
+				startCommand: editStartCommand.trim() || undefined
+			};
 			editing = false;
 		} catch (err) {
 			console.error('Failed to update site:', err);
