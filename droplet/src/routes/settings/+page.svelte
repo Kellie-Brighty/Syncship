@@ -212,7 +212,7 @@
 	<p class="mt-1 text-sm text-gray-500">Manage your account and server configuration.</p>
 </div>
 
-<div class="space-y-5 max-w-2xl">
+<div class="space-y-5">
 	<!-- Profile -->
 	<Card class="p-5">
 		<div class="flex items-start gap-3">

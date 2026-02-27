@@ -25,6 +25,12 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Pending plans — keyed by email. Users can read/delete their own pending plan on signup.
+    match /pending_plans/{email} {
+      allow read, delete: if isAuth() && request.auth.token.email.lower() == email.lower();
+      allow write: if false; // Only writable by webhook via Admin SDK
+    }
+
     // Settings collection — users can manage their personal settings (e.g., GitHub tokens), daemon can read
     match /settings/{userId} {
       allow read: if isOwner(userId) || isDaemonFor(userId);
