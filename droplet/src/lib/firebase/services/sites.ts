@@ -68,8 +68,12 @@ export async function createSite(
     throw new Error(message || 'Site limit reached');
   }
 
+  const cleanData = Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v !== undefined)
+  );
+
   const docRef = await addDoc(collection(db, COLLECTION), {
-    ...data,
+    ...cleanData,
     status: 'pending',
     lastDeployAt: null,
     createdAt: serverTimestamp(),

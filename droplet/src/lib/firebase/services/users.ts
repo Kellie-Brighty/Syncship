@@ -72,6 +72,8 @@ export async function getUserProfile(uid: string): Promise<User | null> {
     email: data.email,
     displayName: data.displayName,
     role: data.role ?? 'admin',
+    plan: data.plan ?? 'free',
+    isWhitelisted: data.isWhitelisted,
     createdAt: data.createdAt?.toDate() ?? new Date(),
     updatedAt: data.updatedAt?.toDate() ?? new Date()
   };
