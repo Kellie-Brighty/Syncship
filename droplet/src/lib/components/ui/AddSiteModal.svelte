@@ -188,7 +188,7 @@
 									: 'border-gray-200 text-gray-500 hover:border-gray-300'}"
 						>
 							<span class="font-medium block">Framework</span>
-							<span class="text-xs text-gray-400 block mt-0.5">React, Vue, etc.</span>
+							<span class="text-xs text-gray-400 block mt-0.5">React, Vue, Vite</span>
 						</button>
 						<button
 							type="button"
@@ -199,10 +199,17 @@
 									? 'border-gray-900 bg-gray-50 text-gray-900'
 									: 'border-gray-200 text-gray-500 hover:border-gray-300'}"
 						>
-							<span class="font-medium block">Backend</span>
-							<span class="text-xs text-gray-400 block mt-0.5">Node, Python, etc.</span>
+							<span class="font-medium block">Backend / SSR</span>
+							<span class="text-xs text-gray-400 block mt-0.5">Next.js, SvelteKit, Express</span>
 						</button>
 					</div>
+					{#if projectType === 'backend'}
+						<p class="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mt-2">
+							⚠️ Choose <strong>Backend / SSR</strong> if your app has API routes, webhooks, or server-side rendering. Static and Framework types won't run server-side code.
+						</p>
+					{:else if projectType === 'build'}
+						<p class="text-xs text-gray-400 mt-2">No server process. If your app has API routes, choose <strong>Backend / SSR</strong> instead.</p>
+					{/if}
 				</div>
 
 				<!-- Build settings -->
