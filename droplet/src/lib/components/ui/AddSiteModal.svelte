@@ -144,7 +144,7 @@
 							<div>
 								<p class="text-sm font-bold text-indigo-900">{limitMessage}</p>
 								<p class="text-xs text-indigo-600 mt-1">Upgrade now to unlock unlimited sites and professional features.</p>
-								<a href="https://buy.polar.sh/polar_cl_wI21HXqPa8S1S3W6Y9lBK0cuwU0gNfPdjUb9l4HgmLO" target="_blank" rel="noopener noreferrer" class="inline-block mt-3 text-xs font-bold text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors">
+								<a href="https://buy.polar.sh/polar_cl_wI21HXqPa8S1S3W6Y9lBK0cuwU0gNfPdjUb9l4HgmLO?customer_email={$currentUser?.email || ''}" target="_blank" rel="noopener noreferrer" class="inline-block mt-3 text-xs font-bold text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors">
 									Upgrade for $2
 								</a>
 							</div>

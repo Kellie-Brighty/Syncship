@@ -581,7 +581,7 @@
 							<p class="text-sm font-bold text-indigo-900">{deploymentLimitMessage}</p>
 							<p class="text-xs text-indigo-600 mt-0.5 font-medium">Capture the full power of SyncShip with unlimited deployments.</p>
 						</div>
-						<a href="https://buy.polar.sh/polar_cl_wI21HXqPa8S1S3W6Y9lBK0cuwU0gNfPdjUb9l4HgmLO" target="_blank" rel="noopener noreferrer" class="inline-block mt-3 sm:mt-0 text-xs font-bold text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-600/20 whitespace-nowrap">
+						<a href="https://buy.polar.sh/polar_cl_wI21HXqPa8S1S3W6Y9lBK0cuwU0gNfPdjUb9l4HgmLO?customer_email={$currentUser?.email || ''}" target="_blank" rel="noopener noreferrer" class="inline-block mt-3 sm:mt-0 text-xs font-bold text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-600/20 whitespace-nowrap">
 							Unlock Unlimited for $2
 						</a>
 					</div>

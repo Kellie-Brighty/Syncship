@@ -134,7 +134,7 @@
 							</div>
 						</div>
 
-						<a href="https://buy.polar.sh/polar_cl_wI21HXqPa8S1S3W6Y9lBK0cuwU0gNfPdjUb9l4HgmLO" target="_blank" rel="noopener noreferrer" class="mt-4 flex items-center justify-center gap-1.5 w-full rounded-lg bg-indigo-600 py-2 text-xs font-bold text-white hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200/50">
+						<a href="https://buy.polar.sh/polar_cl_wI21HXqPa8S1S3W6Y9lBK0cuwU0gNfPdjUb9l4HgmLO?customer_email={$currentUser?.email || ''}" target="_blank" rel="noopener noreferrer" class="mt-4 flex items-center justify-center gap-1.5 w-full rounded-lg bg-indigo-600 py-2 text-xs font-bold text-white hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200/50">
 							<Rocket class="h-3 w-3" /> Upgrade for $2
 						</a>
 					</div>

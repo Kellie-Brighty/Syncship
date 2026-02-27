@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { Droplets, Rocket, Shield, Globe, GitBranch, Activity, Terminal, ChevronRight, Check } from 'lucide-svelte';
 	import AuthModal from '$lib/components/ui/AuthModal.svelte';
+	import { currentUser } from '$lib/stores/auth';
 
 	// ── Scroll reveal ─────────────────────────────────────────
 	function initScrollReveal() {
@@ -302,7 +303,7 @@
 				</ul>
 
 				<a
-					href="https://buy.polar.sh/polar_cl_wI21HXqPa8S1S3W6Y9lBK0cuwU0gNfPdjUb9l4HgmLO"
+					href="https://buy.polar.sh/polar_cl_wI21HXqPa8S1S3W6Y9lBK0cuwU0gNfPdjUb9l4HgmLO{$currentUser?.email ? `?customer_email=${$currentUser.email}` : ''}"
 					target="_blank"
 					rel="noopener noreferrer"
 					class="mt-8 block rounded-xl bg-white py-3 text-center text-sm font-bold text-gray-900 hover:bg-gray-100 transition-colors shadow"

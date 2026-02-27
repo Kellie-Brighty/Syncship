@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Card from '$lib/components/ui/Card.svelte';
 	import Pagination from '$lib/components/ui/Pagination.svelte';
 	import { CodeSquare, ChevronDown, Loader, ArrowLeft } from 'lucide-svelte';
 	import { currentUser } from '$lib/stores/auth';

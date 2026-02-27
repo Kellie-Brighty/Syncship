@@ -379,7 +379,7 @@
 					{/if}
 				{#if serverStatus === 'offline'}
 					<p class="mt-2 text-xs text-gray-400">
-						Make sure the daemon is running on your server: <code class="bg-gray-100 px-1 rounded">pm2 logs agencydroplet</code>
+						Make sure the daemon is running on your server: <code class="bg-gray-100 px-1 rounded">pm2 logs syncship-daemon</code>
 					</p>
 				{/if}
 			</div>
