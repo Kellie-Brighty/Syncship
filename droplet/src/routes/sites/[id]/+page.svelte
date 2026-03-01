@@ -255,6 +255,7 @@
 		unsubDeploys?.();
 
 		// Real-time site listener
+		unsubSite = onSnapshot(doc(db, 'sites', id), (snap) => {
 			if (snap.exists()) {
 				const data = snap.data();
 				site = {
