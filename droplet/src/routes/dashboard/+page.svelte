@@ -11,6 +11,7 @@
 	import type { ServerStats } from '$lib/types/models';
 	import { db } from '$lib/firebase/client';
 	import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 
 	const LATEST_DAEMON_VERSION = '0.1.0'; // Hardcoded for now
 
@@ -22,6 +23,11 @@
 	let checkingUpdate = $state(false);
 	let daemonInfo = $state<any>(null);
 	let updateAvailable = $derived(daemonInfo?.version && daemonInfo.version !== LATEST_DAEMON_VERSION);
+
+	// Modal States
+	let showUpdateModal = $state(false);
+	let showUpToDateModal = $state(false);
+	let selfUpdateStarted = $state(false);
 
 	$effect(() => {
 		const user = $currentUser;
@@ -93,7 +99,7 @@
 			setTimeout(() => {
 				checkingUpdate = false;
 				if (!updateAvailable) {
-					alert('SyncShip is up to date! (v' + (daemonInfo?.version || 'unknown') + ')');
+					showUpToDateModal = true;
 				}
 			}, 2000);
 		} catch (err) {
@@ -102,15 +108,24 @@
 		}
 	}
 
+	async function confirmSelfUpdate() {
+		if (!$currentUser) return;
+		showUpdateModal = true;
+	}
+
 	async function startSelfUpdate() {
-		if (!$currentUser || !confirm('Are you sure you want to update the SyncShip daemon? The server might be briefly unavailable during restart.')) return;
+		if (!$currentUser) return;
 		
+		selfUpdateStarted = true;
 		try {
 			await updateDoc(doc(db, 'daemon', $currentUser.uid), {
 				action: 'self_update'
 			});
+			showUpdateModal = false;
 		} catch (err) {
 			console.error('Failed to trigger self-update:', err);
+		} finally {
+			selfUpdateStarted = false;
 		}
 	}
 </script>
@@ -162,7 +177,7 @@
 					<h3 class="text-sm font-semibold text-indigo-900">SyncShip Update Available (v{LATEST_DAEMON_VERSION})</h3>
 					<p class="mt-1 text-sm text-indigo-700">A new version of the SyncShip daemon is available. Update now to get the latest features and fixes.</p>
 					<div class="mt-3 flex gap-3">
-						<Button size="sm" class="bg-indigo-600 hover:bg-indigo-700" onclick={startSelfUpdate}>
+						<Button size="sm" class="bg-indigo-600 hover:bg-indigo-700" onclick={confirmSelfUpdate}>
 							One-Click Update
 						</Button>
 						<a href="/settings" class="text-sm font-medium text-indigo-600 hover:text-indigo-500 self-center">
@@ -174,6 +189,28 @@
 		</div>
 	</div>
 {/if}
+
+<!-- Confirmation Modals -->
+<ConfirmationModal 
+	bind:show={showUpdateModal}
+	title="Update SyncShip?"
+	message="Are you sure you want to update the SyncShip daemon? The server might be briefly unavailable during the restart process (usually < 10 seconds)."
+	confirmText="Start Update"
+	type="warning"
+	loading={selfUpdateStarted}
+	onConfirm={startSelfUpdate}
+	onCancel={() => showUpdateModal = false}
+/>
+
+<ConfirmationModal 
+	bind:show={showUpToDateModal}
+	title="You're all set!"
+	message="SyncShip is running the latest version (v{daemonInfo?.version || 'unknown'}). No updates needed."
+	confirmText="Awesome"
+	type="success"
+	onConfirm={() => showUpToDateModal = false}
+	onCancel={() => showUpToDateModal = false}
+/>
 
 {#if daemonInfo?.action === 'error'}
 	<div class="mb-6 rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">

@@ -1,8 +1,12 @@
 import './env.js';
-
 import { db, authenticateDaemon } from './firebase.js';
 import { deploySite } from './deployer.js';
 import { doc, setDoc, updateDoc, collection, query, where, onSnapshot, serverTimestamp, getDoc } from 'firebase/firestore';
+import { exec, execSync } from 'child_process';
+import { promisify } from 'util';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import os from 'os';
 import * as osutils from 'os-utils';
 
@@ -86,18 +90,22 @@ async function boot() {
         console.log('📦 Installing dependencies...');
         await execAsync('npm install');
 
-        await updateDoc(snap.ref, { updateStatus: 'building' });
         console.log('🏗️ Building...');
         await execAsync('npm run build');
 
+        // Read the NEW version from updated package.json
+        const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
+
         await updateDoc(snap.ref, { 
           action: null,
-          updateStatus: 'restarting' 
+          updateStatus: 'idle',
+          version: pkg.version
         });
         
         console.log('🔄 Restarting daemon via PM2...');
         // We trigger the restart in the background and exit
-        exec('pm2 restart syncship-daemon');
+        const restartCmd = 'pm2 restart syncship-daemon';
+        exec(restartCmd);
         process.exit(0);
 
       } catch (err: any) {
