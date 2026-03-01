@@ -46,6 +46,8 @@
 	let editBuildCommand = $state('');
 	let editOutputDir = $state('');
 	let editStartCommand = $state('');
+	let editInstallCommand = $state('');
+	let editSecretFiles = $state<Array<{ name: string, content: string, size?: number }>>([]);
 	let editSiteType = $state<'static' | 'backend'>('static');
 	let saving = $state(false);
 
@@ -263,6 +265,9 @@
 					branch: data.branch,
 					buildCommand: data.buildCommand || '',
 					outputDir: data.outputDir || '.',
+					startCommand: data.startCommand,
+					installCommand: data.installCommand,
+					secretFiles: data.secretFiles || [],
 					status: data.status,
 					ownerId: data.ownerId,
 					envVars: data.envVars,
@@ -346,6 +351,8 @@
 		editBuildCommand = site.buildCommand;
 		editOutputDir = site.outputDir;
 		editStartCommand = site.startCommand || '';
+		editInstallCommand = site.installCommand || '';
+		editSecretFiles = site.secretFiles ? site.secretFiles.map(f => ({ ...f, size: f.content.length })) : [];
 		editSiteType = site.siteType || 'static';
 		editing = true;
 	}
@@ -362,7 +369,9 @@
 				buildCommand: editBuildCommand.trim(),
 				outputDir: editOutputDir.trim(),
 				siteType: editSiteType,
-				startCommand: editStartCommand.trim() || undefined
+				startCommand: editStartCommand.trim() || undefined,
+				installCommand: editInstallCommand.trim() || undefined,
+				secretFiles: editSecretFiles.length > 0 ? editSecretFiles.map(f => ({ name: f.name, content: f.content })) : undefined
 			});
 			// Refresh local state so the read view shows the updated values immediately
 			site = {
@@ -374,7 +383,9 @@
 				buildCommand: editBuildCommand.trim(),
 				outputDir: editOutputDir.trim(),
 				siteType: editSiteType,
-				startCommand: editStartCommand.trim() || undefined
+				startCommand: editStartCommand.trim() || undefined,
+				installCommand: editInstallCommand.trim() || undefined,
+				secretFiles: editSecretFiles.length > 0 ? editSecretFiles.map(f => ({ name: f.name, content: f.content })) : []
 			};
 			editing = false;
 		} catch (err) {
@@ -428,6 +439,36 @@
 		dragOver = false;
 		if (!event.dataTransfer?.files || event.dataTransfer.files.length === 0 || !site) return;
 		processEnvFile(event.dataTransfer.files[0]);
+	}
+
+	async function handleSecretFileUpload(e: Event) {
+		const target = e.target as HTMLInputElement;
+		const files = target.files;
+		if (!files) return;
+
+		for (const file of Array.from(files)) {
+			if (file.size > 512 * 1024) continue;
+
+			const reader = new FileReader();
+			reader.onload = (event) => {
+				const content = event.target?.result as string;
+				if (content) {
+					const index = editSecretFiles.findIndex(f => f.name === file.name);
+					const newFileData = { name: file.name, content, size: file.size };
+					if (index >= 0) {
+						editSecretFiles[index] = newFileData;
+					} else {
+						editSecretFiles = [...editSecretFiles, newFileData];
+					}
+				}
+			};
+			reader.readAsText(file);
+		}
+		target.value = '';
+	}
+
+	function removeSecretFile(fileName: string) {
+		editSecretFiles = editSecretFiles.filter(f => f.name !== fileName);
 	}
 
 	function copyDomain() {
@@ -1058,7 +1099,61 @@
 					{#if editSiteType === 'backend'}
 						<Input label="Start command" placeholder="node build/index.js" bind:value={editStartCommand} />
 					{/if}
-					<div class="flex gap-2 pt-2">
+
+					<!-- Advanced Deployment Settings in Edit Mode -->
+					<div class="pt-4 border-t border-gray-100">
+						<h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+							<Key class="w-3.5 h-3.5"/> Advanced Deployment Settings
+						</h4>
+						
+						<div class="space-y-4">
+							<Input 
+								label="Custom Setup Command"
+								placeholder="e.g. pip install yt-dlp" 
+								bind:value={editInstallCommand} 
+							/>
+							<p class="text-[10px] text-gray-500 italic -mt-1">This command runs on your server BEFORE bun install.</p>
+
+							<div class="space-y-2">
+								<div class="flex items-center justify-between">
+									<label class="block text-xs font-semibold text-gray-700">Secret Files (Git-Ignored)</label>
+									<span class="text-[10px] text-gray-400 font-medium">{editSecretFiles.length} files</span>
+								</div>
+								
+								<div class="flex items-center justify-center w-full">
+									<label class="flex flex-col items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-50 transition-colors">
+										<div class="flex flex-col items-center justify-center pt-2 pb-3">
+											<Upload class="w-5 h-5 mb-1 text-gray-400" />
+											<p class="text-[11px] text-gray-500 text-center"><span class="font-semibold underline">Upload secrets</span> or drag/drop</p>
+										</div>
+										<input type="file" class="hidden" multiple onchange={handleSecretFileUpload} />
+									</label>
+								</div>
+
+								{#if editSecretFiles.length > 0}
+									<div class="mt-2 space-y-1.5 max-h-32 overflow-y-auto pr-1">
+										{#each editSecretFiles as file}
+											<div class="flex items-center justify-between p-1.5 bg-gray-50 border border-gray-200 rounded-lg group">
+												<div class="flex items-center gap-2 overflow-hidden">
+													<ShieldCheck class="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+													<span class="text-[11px] font-medium text-gray-900 truncate">{file.name}</span>
+												</div>
+												<button 
+													type="button" 
+													onclick={() => removeSecretFile(file.name)}
+													class="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
+												>
+													<X class="w-3 h-3" />
+												</button>
+											</div>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						</div>
+					</div>
+
+					<div class="flex gap-2 pt-4">
 						<Button onclick={saveEdits} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
 						<Button variant="outline" onclick={() => editing = false}>Cancel</Button>
 					</div>
@@ -1079,6 +1174,32 @@
 					{:else}
 						<div class="flex justify-between"><dt class="text-gray-500">Output dir</dt><dd class="text-gray-900 font-mono text-xs">{site.outputDir}</dd></div>
 					{/if}
+					
+					<!-- Read-only view for Advanced Settings -->
+					<div class="pt-4 border-t border-gray-100 mt-2">
+						<div class="grid grid-cols-1 gap-y-3">
+							<div class="flex justify-between">
+								<dt class="text-gray-500">Custom Setup</dt>
+								<dd class="text-gray-900 font-mono text-xs">{site.installCommand || '—'}</dd>
+							</div>
+							<div class="flex justify-between">
+								<dt class="text-gray-500">Secret Files</dt>
+								<dd class="text-right">
+									{#if site.secretFiles && site.secretFiles.length > 0}
+										<div class="flex flex-wrap justify-end gap-1.5 mt-0.5">
+											{#each site.secretFiles as file}
+												<span class="inline-flex items-center gap-1 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600 border border-indigo-100">
+													<ShieldCheck class="w-2.5 h-2.5" /> {file.name}
+												</span>
+											{/each}
+										</div>
+									{:else}
+										<span class="text-gray-400 italic font-medium">None</span>
+									{/if}
+								</dd>
+							</div>
+						</div>
+					</div>
 				</dl>
 			{/if}
 		</Card>
