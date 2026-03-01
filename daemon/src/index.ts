@@ -10,6 +10,9 @@ import { fileURLToPath } from 'url';
 import os from 'os';
 import * as osutils from 'os-utils';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 async function boot() {
   console.log(`🚀 SyncShip Daemon starting boot sequence...`);
   

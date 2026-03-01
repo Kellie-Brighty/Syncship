@@ -215,7 +215,7 @@
 {#if daemonInfo?.action === 'error'}
 	<div class="mb-6 rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">
 		<p class="font-bold">Update Failed: {daemonInfo.updateError}</p>
-		<p class="mt-1">Please SSH into your VPS and run `git pull && npm install && npm run build && pm2 restart syncship` manually.</p>
+		<p class="mt-1">Please SSH into your VPS and run `git -C /opt/syncship-daemon pull && cd /opt/syncship-daemon/daemon && npm install && npm run build && pm2 restart syncship-daemon` manually.</p>
 	</div>
 {/if}
 
