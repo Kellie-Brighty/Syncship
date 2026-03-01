@@ -22,7 +22,6 @@
 	let loading = $state(true);
 	let checkingUpdate = $state(false);
 	let daemonInfo = $state<any>(null);
-	let updateAvailable = $derived(daemonInfo?.version && daemonInfo.version !== LATEST_DAEMON_VERSION);
 
 	// Modal States
 	let showUpdateModal = $state(false);
