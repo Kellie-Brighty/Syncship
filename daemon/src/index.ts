@@ -54,10 +54,11 @@ async function boot() {
         const memPercent = (usedRam / totalRam) * 100;
 
         // 1. Keep the daemon status alive
+        const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
         await setDoc(doc(db, 'daemon', SYNC_USER_ID), {
           lastPing: serverTimestamp(),
           status: 'online',
-          version: '0.0.1' // This should match package.json
+          version: pkg.version
         }, { merge: true });
 
         // 2. Stream live OS stats for the dashboard charts
