@@ -190,6 +190,7 @@ async function boot() {
   }
 
   // Listen for sites marked for deletion and clean them up
+  const deletingSites = new Set<string>();
   function startDeletionListener() {
     console.log('👂 Listening for deletion requests...\n');
 
@@ -203,7 +204,9 @@ async function boot() {
         const docSnapshot = change.doc;
         const site = docSnapshot.data();
         if (site.status !== 'deleting') continue;
+        if (deletingSites.has(docSnapshot.id)) continue;
 
+        deletingSites.add(docSnapshot.id);
         console.log(`\n🗑️ Deleting site: ${site.name} (${docSnapshot.id})`);
 
         try {
@@ -228,9 +231,11 @@ async function boot() {
               status: 'failed',
               error: 'Cleanup failed. Manual intervention may be required.'
             });
+            deletingSites.delete(docSnapshot.id);
           }
         } catch (err: any) {
           console.error(`❌ Deletion process crashed for ${site.name}:`, err.message);
+          deletingSites.delete(docSnapshot.id);
         }
       }
     }, (error) => {
