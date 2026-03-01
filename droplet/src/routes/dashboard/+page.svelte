@@ -9,17 +9,32 @@
 	import type { Site } from '$lib/types/models';
 	import type { Deployment } from '$lib/types/models';
 	import type { ServerStats } from '$lib/types/models';
+	import { db } from '$lib/firebase/config';
+	import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+
+	const LATEST_DAEMON_VERSION = '0.1.0'; // Hardcoded for now
 
 	let sites = $state<Site[]>([]);
 	let deployments = $state<Deployment[]>([]);
 	let stats = $state<ServerStats | null>(null);
 	let totalDeployments = $state(0);
 	let loading = $state(true);
+	let checkingUpdate = $state(false);
+	let daemonInfo = $state<any>(null);
+	let updateAvailable = $derived(daemonInfo?.version && daemonInfo.version !== LATEST_DAEMON_VERSION);
 
 	$effect(() => {
 		const user = $currentUser;
 		if (user) {
 			loadData(user.uid);
+			
+			// Listen to daemon info for version/status
+			const unsub = onSnapshot(doc(db, 'daemon', user.uid), (snap) => {
+				if (snap.exists()) {
+					daemonInfo = snap.data();
+				}
+			});
+			return unsub;
 		}
 	});
 
@@ -61,7 +76,42 @@
 		const hours = Math.floor(minutes / 60);
 		if (hours < 24) return `${hours}h ago`;
 		const days = Math.floor(hours / 24);
-		return `${days}d ago`;
+		return `${seconds / 86400 < 1 ? 'Today' : (days + 'd ago')}`;
+	}
+
+	async function checkForUpdates() {
+		if (!$currentUser) return;
+		checkingUpdate = true;
+		
+		try {
+			// Trigger a fresh heartbeat to get current version
+			await updateDoc(doc(db, 'daemon', $currentUser.uid), {
+				action: 'refresh_stats'
+			});
+			
+			// Wait a bit for the daemon to respond
+			setTimeout(() => {
+				checkingUpdate = false;
+				if (!updateAvailable) {
+					alert('SyncShip is up to date! (v' + (daemonInfo?.version || 'unknown') + ')');
+				}
+			}, 2000);
+		} catch (err) {
+			console.error('Update check failed:', err);
+			checkingUpdate = false;
+		}
+	}
+
+	async function startSelfUpdate() {
+		if (!$currentUser || !confirm('Are you sure you want to update the SyncShip daemon? The server might be briefly unavailable during restart.')) return;
+		
+		try {
+			await updateDoc(doc(db, 'daemon', $currentUser.uid), {
+				action: 'self_update'
+			});
+		} catch (err) {
+			console.error('Failed to trigger self-update:', err);
+		}
 	}
 </script>
 
@@ -74,7 +124,16 @@
 		<h1 class="text-xl font-bold tracking-tight text-gray-900">Dashboard</h1>
 		<p class="mt-1 text-sm text-gray-500">Overview of your hosted sites and server health.</p>
 	</div>
-	<div class="mt-4 sm:ml-4 sm:mt-0">
+	<div class="mt-4 flex flex-shrink-0 items-center gap-2 sm:ml-4 sm:mt-0">
+		<Button variant="outline" onclick={checkForUpdates} disabled={checkingUpdate || daemonInfo?.action === 'updating'}>
+			{#if checkingUpdate}
+				<Activity class="-ml-0.5 mr-1.5 h-4 w-4 animate-spin" />
+				Checking...
+			{:else}
+				<Server class="-ml-0.5 mr-1.5 h-4 w-4" />
+				Check for Updates
+			{/if}
+		</Button>
 		<a href="/sites">
 			<Button>
 				<Plus class="-ml-0.5 mr-1.5 h-4 w-4" />
@@ -83,6 +142,45 @@
 		</a>
 	</div>
 </div>
+
+{#if updateAvailable || daemonInfo?.action === 'updating'}
+	<div class="mb-6 rounded-lg border border-indigo-100 bg-indigo-50 p-4">
+		<div class="flex items-start gap-3">
+			<div class="rounded-full bg-indigo-100 p-1.5">
+				<Activity class="h-4 w-4 text-indigo-600 {daemonInfo?.action === 'updating' ? 'animate-spin' : ''}" />
+			</div>
+			<div class="flex-1">
+				{#if daemonInfo?.action === 'updating'}
+					<h3 class="text-sm font-semibold text-indigo-900">SyncShip is Updating...</h3>
+					<p class="mt-1 text-xs text-indigo-700 uppercase tracking-wider font-bold">
+						Current Step: {daemonInfo.updateStatus || 'Initializing'}
+					</p>
+					<div class="mt-2 h-1.5 w-full rounded-full bg-indigo-100 overflow-hidden">
+						<div class="h-full bg-indigo-500 transition-all duration-500 {daemonInfo.updateStatus === 'pulling' ? 'w-1/4' : daemonInfo.updateStatus === 'installing' ? 'w-2/4' : daemonInfo.updateStatus === 'building' ? 'w-3/4' : 'w-full'}"></div>
+					</div>
+				{:else}
+					<h3 class="text-sm font-semibold text-indigo-900">SyncShip Update Available (v{LATEST_DAEMON_VERSION})</h3>
+					<p class="mt-1 text-sm text-indigo-700">A new version of the SyncShip daemon is available. Update now to get the latest features and fixes.</p>
+					<div class="mt-3 flex gap-3">
+						<Button size="sm" class="bg-indigo-600 hover:bg-indigo-700" onclick={startSelfUpdate}>
+							One-Click Update
+						</Button>
+						<a href="/settings" class="text-sm font-medium text-indigo-600 hover:text-indigo-500 self-center">
+							View manual instructions
+						</a>
+					</div>
+				{/if}
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if daemonInfo?.action === 'error'}
+	<div class="mb-6 rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">
+		<p class="font-bold">Update Failed: {daemonInfo.updateError}</p>
+		<p class="mt-1">Please SSH into your VPS and run `git pull && npm install && npm run build && pm2 restart syncship` manually.</p>
+	</div>
+{/if}
 
 {#if loading}
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

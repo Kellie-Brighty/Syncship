@@ -35,7 +35,8 @@ async function boot() {
         // 1. Keep the daemon status alive
         await setDoc(doc(db, 'daemon', SYNC_USER_ID), {
           lastPing: serverTimestamp(),
-          status: 'online'
+          status: 'online',
+          version: '0.0.1' // This should match package.json
         }, { merge: true });
 
         // 2. Stream live OS stats for the dashboard charts
@@ -63,6 +64,49 @@ async function boot() {
       sendHeartbeat();
       // Acknowledge the command so it doesn't run repeatedly
       await updateDoc(snap.ref, { action: null }).catch(() => {});
+    }
+
+    if (data && data.action === 'self_update') {
+      console.log('👷 Self-update requested. Executing...');
+      try {
+        const { exec } = await import('child_process');
+        const { promisify } = await import('util');
+        const execAsync = promisify(exec);
+
+        // Acknowledge receipt
+        await updateDoc(snap.ref, { 
+          action: 'updating',
+          updateStatus: 'pulling' 
+        });
+
+        console.log('📥 Pulling latest code...');
+        await execAsync('git pull');
+        
+        await updateDoc(snap.ref, { updateStatus: 'installing' });
+        console.log('📦 Installing dependencies...');
+        await execAsync('npm install');
+
+        await updateDoc(snap.ref, { updateStatus: 'building' });
+        console.log('🏗️ Building...');
+        await execAsync('npm run build');
+
+        await updateDoc(snap.ref, { 
+          action: null,
+          updateStatus: 'restarting' 
+        });
+        
+        console.log('🔄 Restarting daemon via PM2...');
+        // We trigger the restart in the background and exit
+        exec('pm2 restart syncship');
+        process.exit(0);
+
+      } catch (err: any) {
+        console.error('❌ Self-update failed:', err);
+        await updateDoc(snap.ref, { 
+          action: 'error',
+          updateError: err.message || 'Unknown error'
+        });
+      }
     }
   });
 
