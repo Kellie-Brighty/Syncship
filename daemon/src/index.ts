@@ -80,7 +80,7 @@ async function boot() {
         });
 
         console.log('📥 Pulling latest code...');
-        await execAsync('git pull');
+        await execAsync('git -C .. pull');
         
         await updateDoc(snap.ref, { updateStatus: 'installing' });
         console.log('📦 Installing dependencies...');

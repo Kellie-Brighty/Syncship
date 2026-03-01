@@ -59,19 +59,19 @@ sudo chown -R $USER:$USER /opt/syncship-daemon
 cd /opt/syncship-daemon
 
 # 7. Download the Daemon Core
-echo "⬇️ Downloading SyncShip Daemon..."
-# In production, this would clone from a public GitHub release URL or a tarball.
-# For now, we will assume the source is reachable or we do a sparse checkout.
-# We'll just clone the main agency droplet repo and extract the daemon part.
-if [ -d "daemon" ]; then
-    rm -rf daemon
+echo "⬇️ Downloading SyncShip Daemon (Persistent Repo)..."
+
+# If it exists but isn't a git repo, clear it
+if [ -d ".git" ]; then
+    echo "🔄 Existing repository found. Updating..."
+    git pull > /dev/null 2>&1
+else
+    # Clone the repo into the current directory (/opt/syncship-daemon)
+    rm -rf * .git > /dev/null 2>&1 || true
+    git clone https://github.com/Kellie-Brighty/Syncship.git . > /dev/null 2>&1
 fi
 
-# NOTE: Adjust this git clone URL to point to your public daemon release repository!
-git clone https://github.com/Kellie-Brighty/Syncship.git temp_repo > /dev/null 2>&1
-mv temp_repo/daemon ./daemon
-rm -rf temp_repo
-
+# Move into the daemon directory inside the repo
 cd daemon
 
 # 8. Setup Environment Variables & Firebase Key
