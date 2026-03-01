@@ -9,7 +9,7 @@
 	import type { Site } from '$lib/types/models';
 	import type { Deployment } from '$lib/types/models';
 	import type { ServerStats } from '$lib/types/models';
-	import { db } from '$lib/firebase/config';
+	import { db } from '$lib/firebase/client';
 	import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 
 	const LATEST_DAEMON_VERSION = '0.1.0'; // Hardcoded for now

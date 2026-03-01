@@ -306,12 +306,12 @@
 						<p class="mt-1 text-xs text-gray-500">Run this on your server if the "One-Click Update" fails or you need to update manually.</p>
 						<div class="mt-2 flex rounded-md shadow-sm">
 							<div class="relative flex flex-grow items-stretch focus-within:z-10 min-w-0">
-								<pre id="update-command" class="block w-full rounded-none rounded-l-md border-0 py-2.5 pl-3 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 bg-gray-50 sm:text-sm sm:leading-6 font-mono overflow-hidden text-ellipsis whitespace-nowrap">git pull && npm install && npm run build && pm2 restart syncship</pre>
+								<pre id="update-command" class="block w-full rounded-none rounded-l-md border-0 py-2.5 pl-3 pr-3 text-gray-900 ring-1 ring-inset ring-gray-300 bg-gray-50 sm:text-sm sm:leading-6 font-mono overflow-hidden text-ellipsis whitespace-nowrap">git pull && npm install && npm run build && pm2 restart syncship-daemon</pre>
 							</div>
 							<button 
 								type="button" 
 								class="relative -ml-px inline-flex shrink-0 items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 cursor-pointer"
-								onclick={() => copyToClipboard(`git pull && npm install && npm run build && pm2 restart syncship`, 'command')}
+								onclick={() => copyToClipboard(`git pull && npm install && npm run build && pm2 restart syncship-daemon`, 'command')}
 							>
 								{#if copiedCommand}
 									<Check class="h-4 w-4 text-green-600" /> <span class="text-green-600">Copied</span>

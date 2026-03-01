@@ -97,7 +97,7 @@ async function boot() {
         
         console.log('🔄 Restarting daemon via PM2...');
         // We trigger the restart in the background and exit
-        exec('pm2 restart syncship');
+        exec('pm2 restart syncship-daemon');
         process.exit(0);
 
       } catch (err: any) {
