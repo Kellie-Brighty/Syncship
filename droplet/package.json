@@ -33,6 +33,7 @@
 		"firebase": "^12.9.0",
 		"firebase-admin": "^13.6.1",
 		"lucide-svelte": "^0.575.0",
+		"svelte-select": "^5.8.3",
 		"svix": "^1.86.0"
 	}
 }

@@ -73,8 +73,17 @@ export async function getUserProfile(uid: string): Promise<User | null> {
     displayName: data.displayName,
     role: data.role ?? 'admin',
     plan: data.plan ?? 'free',
+    githubToken: data.githubToken,
     isWhitelisted: data.isWhitelisted,
     createdAt: data.createdAt?.toDate() ?? new Date(),
     updatedAt: data.updatedAt?.toDate() ?? new Date()
   };
+}
+
+export async function updateUserGithubToken(uid: string, token: string | null): Promise<void> {
+  const ref = doc(db, COLLECTION, uid);
+  await setDoc(ref, {
+    githubToken: token,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
 }

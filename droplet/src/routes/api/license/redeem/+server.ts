@@ -1,6 +1,7 @@
 import { json, type RequestEvent } from '@sveltejs/kit';
 import { adminDb } from '$lib/server/firebase-admin';
 import { getAuth } from 'firebase-admin/auth';
+import { env } from '$env/dynamic/private';
 
 export async function POST({ request }: RequestEvent) {
 	try {
@@ -20,13 +21,21 @@ export async function POST({ request }: RequestEvent) {
 		
 		const uid = decodedToken.uid;
 		const { licenseKey } = await request.json();
+		const adminLicenseKey = env.ADMIN_LICENSE_KEY;
 
-		if (!licenseKey || !licenseKey.startsWith('SYNC-')) {
-			return json({ error: 'Invalid license key format' }, { status: 400 });
+		// 2. Secure Validation
+		// If an ADMIN_LICENSE_KEY is set in environment, allow it as a bypass
+		if (adminLicenseKey && licenseKey === adminLicenseKey) {
+			console.log(`[License Redemption] Admin key used by ${uid}`);
+		} else {
+			// Otherwise, reject the placeholder prefix check
+			return json({ 
+				error: 'Feature not yet available', 
+				message: 'License key redemption is currently undergoing maintenance. Please contact support.' 
+			}, { status: 501 });
 		}
 
-		// 2. TODO: Verify against Polar API here if POLAR_API_TOKEN is available
-		// For now, we update the user plan to lifetime
+		// Update the user plan to lifetime
 		await adminDb.collection('users').doc(uid).update({
 			plan: 'lifetime',
 			planSetAt: new Date().toISOString(),

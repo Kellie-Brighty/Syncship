@@ -6,6 +6,7 @@ export interface User {
   displayName?: string;
   role: 'admin' | 'user';
   plan: 'free' | 'lifetime' | 'pro';
+  githubToken?: string;
   isWhitelisted?: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -18,6 +19,7 @@ export interface Site {
   repo: string;
   branch: string;
   siteType: 'static' | 'backend';
+  isPrivate?: boolean;
   buildCommand: string;
   outputDir: string;
   startCommand?: string;

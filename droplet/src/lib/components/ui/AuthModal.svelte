@@ -12,7 +12,7 @@
 
 	let { show = $bindable(false), mode = 'login' }: Props = $props();
 
-	let currentMode = $state<'login' | 'register'>(mode);
+	let currentMode = $state<'login' | 'register'>('login');
 	let email = $state('');
 	let password = $state('');
 	let confirmPassword = $state('');

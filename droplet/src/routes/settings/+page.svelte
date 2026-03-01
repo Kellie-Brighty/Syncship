@@ -169,11 +169,14 @@
 
 	let refreshingDaemon = $state(false);
 	async function refreshDaemonStatus() {
-		const user = $currentUser;
-		if (user) {
-			// user plan check logic can go here if needed
+		refreshingDaemon = true;
+		try {
+			await checkDaemonStatus();
+			// Add a small delay for better UX feel
+			await new Promise(resolve => setTimeout(resolve, 600));
+		} finally {
+			refreshingDaemon = false;
 		}
-		// ... existing logic ...
 	}
 
 	async function redeemLicense() {

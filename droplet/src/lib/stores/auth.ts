@@ -10,12 +10,13 @@ import {
   type User
 } from 'firebase/auth';
 import { auth } from '$lib/firebase/client';
-import { ensureUserProfile } from '$lib/firebase/services/users';
+import { ensureUserProfile, getUserProfile } from '$lib/firebase/services/users';
+import type { User as AppUser } from '$lib/types/models';
 
 const googleProvider = new GoogleAuthProvider();
 
 interface AuthState {
-  user: User | null;
+  user: (User & Partial<AppUser>) | null;
   loading: boolean;
   error: string | null;
 }
@@ -31,7 +32,7 @@ if (typeof window !== 'undefined') {
   onAuthStateChanged(auth, async (user) => {
     authState.update((state) => ({
       ...state,
-      user,
+      user: user as any, // Temporary cast until we get full profile below
       loading: false
     }));
 
@@ -39,6 +40,17 @@ if (typeof window !== 'undefined') {
     if (user) {
       try {
         await ensureUserProfile(user);
+        const profile = await getUserProfile(user.uid);
+        if (profile) {
+             // Safely attach custom profile attributes to the Firebase user object
+             (user as any).plan = profile.plan;
+             (user as any).githubToken = profile.githubToken;
+             
+             authState.update((state) => ({
+                 ...state,
+                 user: user as any
+             }));
+        }
       } catch (err) {
         console.error('Failed to sync user profile:', err);
       }
