@@ -456,10 +456,28 @@ async function startBackendProcess(
   const script = parts[0];
   const args = parts.slice(1).join(' ');
 
-  // Build PM2 start command with PORT env var
-  const envStr = `PORT=${port}`;
-  const pm2Cmd = `cd ${appDir} && ${envStr} pm2 start ${script} --name ${domain} -- ${args}`;
-  await execAsync(pm2Cmd);
+  // Define essential system variables to keep
+  const ESSENTIAL_ENV = {
+    PATH: process.env.PATH,
+    HOME: process.env.HOME,
+    USER: process.env.USER,
+    LANG: process.env.LANG,
+    PWD: appDir
+  };
+
+  // Build the PM2 start command. 
+  // We use --env to pass only the PORT originally, but PM2 often inherits the parent env anyway.
+  // To truly isolate, we use `env: {}` in the exec options below.
+  const pm2Cmd = `pm2 start ${script} --name ${domain} --update-env -- ${args}`;
+  
+  await execAsync(pm2Cmd, {
+    cwd: appDir,
+    env: {
+      ...ESSENTIAL_ENV,
+      PORT: port.toString()
+    }
+  });
+  
   await execAsync('pm2 save');
 }
 
