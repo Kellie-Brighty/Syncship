@@ -281,6 +281,12 @@
 				goto('/sites');
 			}
 			loading = false;
+		}, (error) => {
+			console.error('Site listener error:', error);
+			// If we get a permission error while deleting, it usually means the doc is gone
+			if (site?.status === 'deleting' || error.code === 'permission-denied') {
+				goto('/sites');
+			}
 		});
 
 		fetchTotalSiteCount(id, userId);
