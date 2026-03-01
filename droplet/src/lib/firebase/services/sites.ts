@@ -96,5 +96,8 @@ export async function updateSite(id: string, data: Partial<Site>): Promise<void>
 
 export async function deleteSite(id: string): Promise<void> {
   const ref = doc(db, COLLECTION, id);
-  await deleteDoc(ref);
+  await updateDoc(ref, { 
+    status: 'deleting',
+    updatedAt: serverTimestamp()
+  });
 }

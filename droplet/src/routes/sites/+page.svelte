@@ -53,7 +53,8 @@
 		live: { icon: CheckCircle, classes: 'bg-green-50 text-green-700', label: 'Live' },
 		building: { icon: Loader, classes: 'bg-yellow-50 text-yellow-700', label: 'Building' },
 		failed: { icon: XCircle, classes: 'bg-red-50 text-red-700', label: 'Failed' },
-		pending: { icon: Clock, classes: 'bg-gray-100 text-gray-600', label: 'Pending' }
+		pending: { icon: Clock, classes: 'bg-gray-100 text-gray-600', label: 'Pending' },
+		deleting: { icon: Loader, classes: 'bg-rose-50 text-rose-700 font-bold', label: 'Deleting...' }
 	};
 </script>
 

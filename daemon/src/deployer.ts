@@ -481,6 +481,78 @@ async function startBackendProcess(
   await execAsync('pm2 save');
 }
 
+/**
+ * Clean up a site: stop PM2, remove directories, remove Nginx config
+ */
+export async function cleanupSite(site: { id: string; domain: string; siteType: string }): Promise<{ success: boolean; log: string }> {
+  const logs: string[] = [];
+  const log = (msg: string) => {
+    console.log(`[CLEANUP] ${msg}`);
+    logs.push(msg);
+  };
+
+  const cleanDomain = site.domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  const repoDir = resolve(REPOS_DIR, site.id);
+  const siteDir = resolve(WEB_ROOT, cleanDomain);
+  const appDir = resolve(APPS_DIR, cleanDomain);
+  const nginxConfig = `/etc/nginx/sites-available/${cleanDomain}`;
+  const nginxEnabled = `/etc/nginx/sites-enabled/${cleanDomain}`;
+
+  try {
+    log(`Starting cleanup for ${cleanDomain}...`);
+
+    // 1. Stop and delete PM2 process if backend
+    if (site.siteType === 'backend') {
+      log(`Stopping PM2 process ${cleanDomain}...`);
+      try {
+        await execAsync(`pm2 delete ${cleanDomain}`);
+        log(`  ✓ PM2 process deleted`);
+      } catch (e) {
+        log(`  ⚠ PM2 process not found or already deleted`);
+      }
+    }
+
+    // 2. Remove directories
+    log(`Removing repository directory: ${repoDir}...`);
+    await execAsync(`rm -rf ${repoDir}`);
+    
+    log(`Removing deployment directory: ${siteDir}...`);
+    await execAsync(`rm -rf ${siteDir}`);
+
+    if (site.siteType === 'backend') {
+      log(`Removing app directory: ${appDir}...`);
+      await execAsync(`rm -rf ${appDir}`);
+    }
+
+    // 3. Remove Nginx configuration
+    log(`Removing Nginx configuration...`);
+    try {
+      if (existsSync(nginxEnabled)) await execAsync(`rm ${nginxEnabled}`);
+      if (existsSync(nginxConfig)) await execAsync(`rm ${nginxConfig}`);
+      log(`  ✓ Nginx configs removed`);
+    } catch (e: any) {
+      log(`  ⚠ Failed to remove Nginx configs: ${e.message}`);
+    }
+
+    // 4. Reload Nginx
+    log(`Reloading Nginx...`);
+    try {
+      await execAsync('nginx -t');
+      await execAsync('systemctl reload nginx');
+      log(`  ✓ Nginx reloaded`);
+    } catch (e: any) {
+      log(`  ⚠ Nginx reload failed: ${e.message}`);
+    }
+
+    log(`✅ Cleanup complete for ${cleanDomain}`);
+    return { success: true, log: logs.join('\n') };
+
+  } catch (err: any) {
+    log(`❌ Cleanup failed: ${err.message}`);
+    return { success: false, log: logs.join('\n') };
+  }
+}
+
 function formatDuration(ms: number): string {
   const seconds = Math.floor(ms / 1000);
   if (seconds < 60) return `${seconds}s`;

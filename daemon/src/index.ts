@@ -189,8 +189,59 @@ async function boot() {
     });
   }
 
+  // Listen for sites marked for deletion and clean them up
+  function startDeletionListener() {
+    console.log('👂 Listening for deletion requests...\n');
+
+    const sitesRef = collection(db, 'sites');
+    const q = query(sitesRef, where('ownerId', '==', SYNC_USER_ID), where('status', '==', 'deleting'));
+
+    onSnapshot(q, async (snapshot) => {
+      for (const change of snapshot.docChanges()) {
+        if (change.type !== 'added' && change.type !== 'modified') continue;
+
+        const docSnapshot = change.doc;
+        const site = docSnapshot.data();
+        if (site.status !== 'deleting') continue;
+
+        console.log(`\n🗑️ Deleting site: ${site.name} (${docSnapshot.id})`);
+
+        try {
+          // Import cleanup function
+          const { cleanupSite } = await import('./deployer.js');
+          
+          const result = await cleanupSite({
+            id: docSnapshot.id,
+            domain: site.domain,
+            siteType: site.siteType
+          });
+
+          if (result.success) {
+            console.log(`✅ Cleanup successful for ${site.name}. Removing record from Firestore.`);
+            // Finally delete the record from Firestore
+            const { deleteDoc } = await import('firebase/firestore');
+            await deleteDoc(docSnapshot.ref);
+          } else {
+            console.error(`❌ Cleanup failed for ${site.name}:`, result.log);
+            // Mark as failed so user knows there was an issue
+            await updateDoc(docSnapshot.ref, {
+              status: 'failed',
+              error: 'Cleanup failed. Manual intervention may be required.'
+            });
+          }
+        } catch (err: any) {
+          console.error(`❌ Deletion process crashed for ${site.name}:`, err.message);
+        }
+      }
+    }, (error) => {
+      console.error('❌ Deletion listener error:', error);
+      setTimeout(startDeletionListener, 5000);
+    });
+  }
+
   // Start listening
   startDeploymentListener();
+  startDeletionListener();
 
   // Keep alive
   process.on('SIGINT', () => {

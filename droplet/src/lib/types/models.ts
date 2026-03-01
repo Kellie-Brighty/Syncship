@@ -30,7 +30,7 @@ export interface Site {
   startCommand?: string;
   port?: number;
   engine: 'standard' | 'docker';
-  status: 'live' | 'building' | 'failed' | 'pending';
+  status: 'live' | 'building' | 'failed' | 'pending' | 'deleting' | 'deleted';
   lastDeployAt: Date | null;
   ownerId: string;
   envVars?: string;
@@ -47,7 +47,7 @@ export interface Deployment {
   commit: string;
   message: string;
   branch: string;
-  status: 'success' | 'failed' | 'building' | 'queued';
+  status: 'success' | 'failed' | 'building' | 'queued' | 'deleting' | 'deleted';
   duration: string;
   buildLog?: string;
   triggeredBy: string;

@@ -255,7 +255,6 @@
 		unsubDeploys?.();
 
 		// Real-time site listener
-		unsubSite = onSnapshot(doc(db, 'sites', id), (snap) => {
 			if (snap.exists()) {
 				const data = snap.data();
 				site = {
@@ -276,6 +275,9 @@
 					updatedAt: data.updatedAt?.toDate() || new Date(),
 					lastDeployAt: data.lastDeployAt?.toDate() || null
 				} as Site;
+			} else {
+				// Site was deleted from Firestore (cleanup complete)
+				goto('/sites');
 			}
 			loading = false;
 		});
@@ -401,7 +403,8 @@
 		deleting = true;
 		try {
 			await deleteSite(site.id);
-			goto('/sites');
+			// Don't goto('/sites') here, let the onSnapshot handle it when Daemon finished cleanup and deletes the doc
+			showDeleteConfirm = false;
 		} catch (err) {
 			console.error('Failed to delete site:', err);
 		} finally {
@@ -566,7 +569,8 @@
 		live: { icon: CheckCircle, classes: 'bg-green-50 text-green-700', dotColor: 'bg-green-500', label: 'Live' },
 		building: { icon: Loader, classes: 'bg-yellow-50 text-yellow-700', dotColor: 'bg-yellow-500', label: 'Building' },
 		failed: { icon: XCircle, classes: 'bg-red-50 text-red-700', dotColor: 'bg-red-500', label: 'Failed' },
-		pending: { icon: Clock, classes: 'bg-gray-100 text-gray-600', dotColor: 'bg-gray-400', label: 'Pending' }
+		pending: { icon: Clock, classes: 'bg-gray-100 text-gray-600', dotColor: 'bg-gray-400', label: 'Pending' },
+		deleting: { icon: Loader, classes: 'bg-rose-50 text-rose-700 font-bold', dotColor: 'bg-rose-500', label: 'Deleting...' }
 	};
 </script>
 
@@ -627,7 +631,22 @@
 			Back to Sites
 		</a>
 
-		{#if overDeploymentLimit}
+		{#if site.status === 'deleting'}
+			<div class="mb-6 rounded-xl bg-rose-50 border-2 border-rose-200 p-5 shadow-sm">
+				<div class="flex items-center gap-4">
+					<div class="rounded-full bg-rose-100 p-2 animate-pulse">
+						<Trash2 class="h-6 w-6 text-rose-600" />
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-rose-900 uppercase tracking-tight">Deletion in Progress</h3>
+						<p class="text-xs text-rose-700 mt-1">
+							The SyncShip Daemon is securely wiping all files, stopping processes, and removing Nginx configurations from your server. 
+							<strong>This page will automatically close when cleanup is complete.</strong>
+						</p>
+					</div>
+				</div>
+			</div>
+		{:else if overDeploymentLimit}
 			<div class="mb-6 rounded-xl bg-indigo-50 border border-indigo-100 p-4 ring-1 ring-inset ring-indigo-500/10">
 				<div class="flex items-start gap-3">
 					<div class="rounded-lg bg-indigo-600 p-1.5 shrink-0">
@@ -687,8 +706,11 @@
 				</div>
 			</div>
 			<div class="mt-4 sm:mt-0 flex gap-2">
-				<Button onclick={triggerDeploy} disabled={site.status === 'building' || deploying}>
-					{#if site.status === 'building' || deploying}
+				<Button onclick={triggerDeploy} disabled={site.status === 'building' || deploying || site.status === 'deleting'}>
+					{#if site.status === 'deleting'}
+						<Loader class="-ml-0.5 mr-1.5 h-4 w-4 animate-spin text-rose-600" />
+						Deleting...
+					{:else if site.status === 'building' || deploying}
 						<Loader class="-ml-0.5 mr-1.5 h-4 w-4 animate-spin" />
 						Building...
 					{:else if site.status === 'live'}
@@ -1333,7 +1355,7 @@
 					</div>
 				</div>
 			{:else}
-				<Button variant="danger" onclick={() => showDeleteConfirm = true}>
+				<Button variant="danger" onclick={() => showDeleteConfirm = true} disabled={site.status === 'deleting'}>
 					<Trash2 class="h-3.5 w-3.5 mr-1" />
 					Delete Site
 				</Button>
