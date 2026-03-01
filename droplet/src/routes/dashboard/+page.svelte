@@ -10,7 +10,7 @@
 	import type { Deployment } from '$lib/types/models';
 	import type { ServerStats } from '$lib/types/models';
 	import { db } from '$lib/firebase/client';
-	import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+	import { doc, onSnapshot, updateDoc, setDoc } from 'firebase/firestore';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 
 	const LATEST_DAEMON_VERSION = '0.1.0'; // Hardcoded for now
@@ -26,6 +26,7 @@
 	// Modal States
 	let showUpdateModal = $state(false);
 	let showUpToDateModal = $state(false);
+	let showLegacyUpdateModal = $state(false);
 	let selfUpdateStarted = $state(false);
 
 	$effect(() => {
@@ -50,8 +51,8 @@
 
 	import { onDestroy } from 'svelte';
 	let updateAvailable = $derived(
-		daemonInfo?.version && 
-		daemonInfo.version.toString().trim() !== LATEST_DAEMON_VERSION.trim()
+		daemonInfo && 
+		(!daemonInfo.version || daemonInfo.version.toString().trim() !== LATEST_DAEMON_VERSION.trim())
 	);
 	let unsubscribeStats: (() => void) | null = null;
 
@@ -106,8 +107,12 @@
 			// Wait a bit for the daemon to respond
 			setTimeout(() => {
 				checkingUpdate = false;
-				if (!updateAvailable) {
+				if (!daemonInfo) {
+					alert("No server connected. Please go to Settings to install the SyncShip daemon on your VPS.");
+				} else if (!updateAvailable) {
 					showUpToDateModal = true;
+				} else {
+					showUpdateModal = true;
 				}
 			}, 2000);
 		} catch (err) {
@@ -118,7 +123,11 @@
 
 	async function confirmSelfUpdate() {
 		if (!$currentUser) return;
-		showUpdateModal = true;
+		if (!daemonInfo?.version || daemonInfo.version === '0.0.1') {
+			showLegacyUpdateModal = true;
+		} else {
+			showUpdateModal = true;
+		}
 	}
 
 	async function startSelfUpdate() {
@@ -126,12 +135,13 @@
 		
 		selfUpdateStarted = true;
 		try {
-			await updateDoc(doc(db, 'daemon', $currentUser.uid), {
+			await setDoc(doc(db, 'daemon', $currentUser.uid), {
 				action: 'self_update'
-			});
+			}, { merge: true });
 			showUpdateModal = false;
-		} catch (err) {
+		} catch (err: any) {
 			console.error('Failed to trigger self-update:', err);
+			alert('Failed to trigger update: ' + err.message);
 		} finally {
 			selfUpdateStarted = false;
 		}
@@ -219,6 +229,20 @@
 	hideCancel={true}
 	onConfirm={() => showUpToDateModal = false}
 	onCancel={() => showUpToDateModal = false}
+/>
+
+<ConfirmationModal 
+	bind:show={showLegacyUpdateModal}
+	title="Manual Upgrade Required"
+	message="Your server is running a legacy version of SyncShip that doesn't support One-Click Updates yet. Please go to Settings and run the Installation Command one more time to upgrade to v0.1.0."
+	confirmText="Go to Settings"
+	cancelText="Cancel"
+	type="info"
+	onConfirm={() => {
+		showLegacyUpdateModal = false;
+		window.location.href = '/settings';
+	}}
+	onCancel={() => showLegacyUpdateModal = false}
 />
 
 {#if daemonInfo?.action === 'error'}

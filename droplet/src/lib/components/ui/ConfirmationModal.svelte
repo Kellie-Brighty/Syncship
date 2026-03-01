@@ -63,9 +63,16 @@
 			<Button 
 				class="w-full sm:w-32 {type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : ''}" 
 				onclick={onConfirm}
-				{loading}
+				disabled={loading}
 			>
-				{confirmText}
+				{#if loading}
+					<span class="flex items-center gap-2">
+						<div class="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+						Processing
+					</span>
+				{:else}
+					{confirmText}
+				{/if}
 			</Button>
 		</div>
 	</div>
