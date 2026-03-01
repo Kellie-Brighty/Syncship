@@ -647,14 +647,13 @@
 								</button>
 								<button
 									type="button"
-									onclick={() => engine = 'docker'}
-									disabled={loading || overLimit}
-									class="rounded-lg border px-3 py-2.5 text-left text-sm transition-all cursor-pointer disabled:opacity-50 flex flex-col gap-1
-										{engine === 'docker'
-											? 'border-indigo-600 bg-indigo-50 text-indigo-900 ring-1 ring-indigo-600'
-											: 'border-gray-200 text-gray-500 hover:border-gray-300'}"
+									disabled={true}
+									class="rounded-lg border px-3 py-2.5 text-left text-sm transition-all cursor-not-allowed opacity-50 flex flex-col gap-1 border-gray-200 text-gray-500 bg-gray-50"
 								>
-									<span class="font-bold block">Docker Container</span>
+									<span class="font-bold flex justify-between items-center block w-full">
+										Docker Container
+										<span class="text-[10px] font-medium px-1.5 py-0.5 bg-gray-200 text-gray-600 rounded">Soon</span>
+									</span>
 									<span class="text-[10px] opacity-70">Isolated environment, best for complex dependencies.</span>
 								</button>
 							</div>
