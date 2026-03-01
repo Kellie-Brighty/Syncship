@@ -29,6 +29,7 @@ export interface Site {
   outputDir: string;
   startCommand?: string;
   port?: number;
+  engine: 'standard' | 'docker';
   status: 'live' | 'building' | 'failed' | 'pending';
   lastDeployAt: Date | null;
   ownerId: string;

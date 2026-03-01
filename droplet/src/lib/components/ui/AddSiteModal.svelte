@@ -23,6 +23,7 @@
 	let repo = $state('');
 	let branch = $state('main');
 	let projectType = $state<'static' | 'build' | 'backend'>('static');
+	let engine = $state<'standard' | 'docker'>('standard');
 	let buildCommand = $state('npm run build');
 	let outputDir = $state('.');
 	let startCommand = $state('node dist/index.js');
@@ -108,7 +109,7 @@
 
 	function resetForm() {
         name = ''; domain = ''; repo = ''; branch = 'main';
-        projectType = 'static'; buildCommand = ''; outputDir = '.';
+        projectType = 'static'; engine = 'standard'; buildCommand = ''; outputDir = '.';
         startCommand = ''; error = ''; detectedEnvKeys = [];
 		repoSearchQuery = '';
 		showConfiguration = false;
@@ -344,6 +345,7 @@
 				startCommand: projectType === 'backend' ? (startCommand.trim() || 'node dist/index.js') : undefined,
 				installCommand: installCommand.trim() || undefined,
 				secretFiles: secretFiles.length > 0 ? secretFiles.map(f => ({ name: f.name, content: f.content })) : undefined,
+				engine,
 				ownerId: user.uid
 			});
 			open = false;
@@ -625,6 +627,37 @@
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<Input label="Site Name (Internal)" placeholder="acme-marketing" required bind:value={name} disabled={loading || overLimit} />
 							<Input label="Domain" placeholder="acme.com" required bind:value={domain} disabled={loading || overLimit} />
+						</div>
+
+						<!-- Deployment Engine Selector -->
+						<div class="pt-2">
+							<p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Deployment Engine</p>
+							<div class="grid grid-cols-2 gap-2">
+								<button
+									type="button"
+									onclick={() => engine = 'standard'}
+									disabled={loading || overLimit}
+									class="rounded-lg border px-3 py-2.5 text-left text-sm transition-all cursor-pointer disabled:opacity-50 flex flex-col gap-1
+										{engine === 'standard'
+											? 'border-indigo-600 bg-indigo-50 text-indigo-900 ring-1 ring-indigo-600'
+											: 'border-gray-200 text-gray-500 hover:border-gray-300'}"
+								>
+									<span class="font-bold block">Standard (PM2)</span>
+									<span class="text-[10px] opacity-70">Native runtime, lightning fast, low overhead.</span>
+								</button>
+								<button
+									type="button"
+									onclick={() => engine = 'docker'}
+									disabled={loading || overLimit}
+									class="rounded-lg border px-3 py-2.5 text-left text-sm transition-all cursor-pointer disabled:opacity-50 flex flex-col gap-1
+										{engine === 'docker'
+											? 'border-indigo-600 bg-indigo-50 text-indigo-900 ring-1 ring-indigo-600'
+											: 'border-gray-200 text-gray-500 hover:border-gray-300'}"
+								>
+									<span class="font-bold block">Docker Container</span>
+									<span class="text-[10px] opacity-70">Isolated environment, best for complex dependencies.</span>
+								</button>
+							</div>
 						</div>
 
 						<!-- Project type selector -->

@@ -31,6 +31,7 @@ function toSite(id: string, data: DocumentData): Site {
     outputDir: data.outputDir ?? '.',
     startCommand: data.startCommand,
     port: data.port,
+    engine: data.engine ?? 'standard',
     status: data.status ?? 'pending',
     lastDeployAt: data.lastDeployAt?.toDate() ?? null,
     ownerId: data.ownerId ?? '',
