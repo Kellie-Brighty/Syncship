@@ -11,6 +11,7 @@
 		cancelText?: string;
 		type?: 'info' | 'warning' | 'success';
 		loading?: boolean;
+		hideCancel?: boolean;
 		onConfirm: () => void;
 		onCancel: () => void;
 	}
@@ -23,6 +24,7 @@
 		cancelText = 'Cancel', 
 		type = 'info',
 		loading = false,
+		hideCancel = false,
 		onConfirm, 
 		onCancel 
 	}: Props = $props();
@@ -48,14 +50,16 @@
 		</p>
 
 		<div class="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
-			<Button 
-				variant="outline" 
-				class="w-full sm:w-32" 
-				onclick={onCancel}
-				disabled={loading}
-			>
-				{cancelText}
-			</Button>
+			{#if !hideCancel}
+				<Button 
+					variant="outline" 
+					class="w-full sm:w-32" 
+					onclick={onCancel}
+					disabled={loading}
+				>
+					{cancelText}
+				</Button>
+			{/if}
 			<Button 
 				class="w-full sm:w-32 {type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : ''}" 
 				onclick={onConfirm}
