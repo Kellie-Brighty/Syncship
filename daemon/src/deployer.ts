@@ -210,25 +210,34 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
     if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
     let sourceDir = resolve(repoDir, site.outputDir || '.');
 
-    // Auto-fallback if the specified outputDir doesn't exist (helpful for React 'build' vs Vue 'dist')
-    if (site.outputDir && site.outputDir !== '.' && !existsSync(sourceDir)) {
-      const fallbacks = ['dist', 'build', 'out'];
+    if ((!site.outputDir || site.outputDir === '.') && !existsSync(resolve(repoDir, 'index.html'))) {
+      const fallbacks = ['dist', 'build', 'out', 'public'];
       for (const override of fallbacks) {
         const potentialDir = resolve(repoDir, override);
-        if (existsSync(potentialDir)) {
+        if (existsSync(potentialDir) && existsSync(resolve(potentialDir, 'index.html'))) {
           sourceDir = potentialDir;
-          await log(`Output directory '${site.outputDir}' not found. Auto-detected '${override}' instead.`, 0, 'Deploying files');
+          await log(`No index.html found in root. Auto-detected '${override}' folder as build output.`, 0, 'Deploying files');
           break;
         }
       }
     }
 
-    if (site.outputDir !== '.' && !existsSync(sourceDir)) {
-      throw new Error(`Output directory not found. The build did not produce the expected folder.`);
+    if (!existsSync(sourceDir)) {
+      throw new Error(`Output directory '${site.outputDir}' not found and no common build folders detected.`);
     }
 
     mkdirSync(siteDir, { recursive: true });
     await execStream(`rsync -a --delete ${sourceDir}/ ${siteDir}/`);
+    
+    // Fix permissions: Nginx (www-data) needs to read these files
+    try {
+      await execStream(`chown -R www-data:www-data ${siteDir}`);
+      await execStream(`chmod -R 755 ${siteDir}`);
+      await log('Permissions updated for Nginx');
+    } catch (permErr: any) {
+      await log(`Warning: Could not set permissions: ${permErr.message}`);
+    }
+
     await log(`Files deployed to ${siteDir}`, 1, 'Deploying files');
 
     // 5. Configure Nginx + optionally start PM2 process
