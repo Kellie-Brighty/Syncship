@@ -1,3 +1,8 @@
+export interface SecretFile {
+  name: string;
+  content: string;
+}
+
 // Firestore data models for SyncShip
 
 export interface User {
@@ -28,6 +33,8 @@ export interface Site {
   lastDeployAt: Date | null;
   ownerId: string;
   envVars?: string;
+  installCommand?: string;
+  secretFiles?: SecretFile[];
   createdAt: Date;
   updatedAt: Date;
 }

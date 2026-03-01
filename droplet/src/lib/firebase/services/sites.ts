@@ -34,6 +34,8 @@ function toSite(id: string, data: DocumentData): Site {
     status: data.status ?? 'pending',
     lastDeployAt: data.lastDeployAt?.toDate() ?? null,
     ownerId: data.ownerId ?? '',
+    installCommand: data.installCommand,
+    secretFiles: data.secretFiles,
     createdAt: data.createdAt?.toDate() ?? new Date(),
     updatedAt: data.updatedAt?.toDate() ?? new Date()
   };

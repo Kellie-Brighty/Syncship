@@ -24,6 +24,8 @@ interface SiteConfig {
   port?: number;
   githubToken?: string;
   envVars?: string;
+  installCommand?: string;
+  secretFiles?: Array<{ name: string; content: string }>;
   abortSignal?: AbortSignal;
   onLog?: (logLine: string, fullLog: string) => Promise<void> | void;
   onPortAssigned?: (port: number) => Promise<void> | void;
@@ -162,6 +164,26 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
     } else {
       await log('No .env variables to map', 1, 'Configuring environment');
     }
+    
+    // 2.6 Inject Secret Files
+    if (site.secretFiles && site.secretFiles.length > 0) {
+      await log(`Injecting ${site.secretFiles.length} secret files...`, 1, 'Injecting secrets');
+      for (const file of site.secretFiles) {
+        const safeName = resolve(repoDir, file.name);
+        if (!safeName.startsWith(repoDir)) {
+          await log(`  ⚠️ Skipping unsafe file path: ${file.name}`);
+          continue;
+        }
+        await log(`  -> ${file.name}`);
+        writeFileSync(safeName, file.content);
+      }
+    }
+
+    // 2.7 Run Custom Setup Command
+    if (site.installCommand) {
+      await log(`Running custom setup: ${site.installCommand}`, 1, 'Running setup');
+      await execStream(`cd ${repoDir} && ${site.installCommand}`, { timeout: 300000 });
+    }
 
     // 3. Build if needed (framework projects)
     if (site.buildCommand) {
@@ -228,9 +250,18 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
         await execStream(`cd ${appDir} && ${installCmd}`, { timeout: 300000 });
       }
 
-      // Re-inject env vars into the app directory
       if (site.envVars) {
         writeFileSync(resolve(appDir, '.env'), site.envVars);
+      }
+
+      // Re-inject secret files into the app directory
+      if (site.secretFiles && site.secretFiles.length > 0) {
+        for (const file of site.secretFiles) {
+          const safeName = resolve(appDir, file.name);
+          if (safeName.startsWith(appDir)) {
+            writeFileSync(safeName, file.content);
+          }
+        }
       }
 
       // Allocate or reuse port

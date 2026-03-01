@@ -136,6 +136,8 @@ async function boot() {
             port: site.port,
             githubToken,
             envVars: site.envVars,
+            installCommand: site.installCommand,
+            secretFiles: site.secretFiles,
             abortSignal: abortController.signal,
             onPortAssigned: async (port) => {
               // Save the assigned port back to Firestore so it persists across redeploys

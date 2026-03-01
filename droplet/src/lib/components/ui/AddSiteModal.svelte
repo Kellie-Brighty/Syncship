@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { X, Globe, AlertCircle, RefreshCw, Key, Search, Check, Github, ChevronDown } from 'lucide-svelte';
+	import { X, Globe, AlertCircle, RefreshCw, Key, Search, Check, Github, ChevronDown, Upload, FileCode, Trash2 } from 'lucide-svelte';
 	import Button from './Button.svelte';
 	import Input from './Input.svelte';
 	import Card from './Card.svelte';
@@ -26,6 +26,8 @@
 	let buildCommand = $state('npm run build');
 	let outputDir = $state('.');
 	let startCommand = $state('node dist/index.js');
+	let installCommand = $state('');
+	let secretFiles = $state<Array<{ name: string, content: string, size: number }>>([]);
 	let loading = $state(false);
 	let error = $state('');
 
@@ -114,6 +116,8 @@
 		isMonorepo = false;
 		monorepoApps = [];
 		selectedAppPath = '';
+		installCommand = '';
+		secretFiles = [];
 	}
 
 	async function checkLimits(uid: string) {
@@ -276,6 +280,40 @@
 		}
 	}
 
+	async function handleFileUpload(e: Event) {
+		const target = e.target as HTMLInputElement;
+		const files = target.files;
+		if (!files) return;
+
+		for (const file of Array.from(files)) {
+			if (file.size > 512 * 1024) {
+				error = `File ${file.name} is too large (> 500KB)`;
+				continue;
+			}
+
+			const reader = new FileReader();
+			reader.onload = (event) => {
+				const content = event.target?.result as string;
+				if (content) {
+					const index = secretFiles.findIndex(f => f.name === file.name);
+					const newFileData = { name: file.name, content, size: file.size };
+					if (index >= 0) {
+						secretFiles[index] = newFileData;
+					} else {
+						secretFiles = [...secretFiles, newFileData];
+					}
+				}
+			};
+			reader.readAsText(file);
+		}
+		// Reset the input so the same file can be uploaded again if needed
+		target.value = '';
+	}
+
+	function removeSecretFile(fileName: string) {
+		secretFiles = secretFiles.filter(f => f.name !== fileName);
+	}
+
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		if (overLimit) return;
@@ -304,6 +342,8 @@
 				buildCommand: projectType === 'static' ? '' : (buildCommand.trim() || 'npm run build'),
 				outputDir: projectType === 'backend' ? '.' : (outputDir.trim() || (projectType === 'static' ? '.' : 'dist')),
 				startCommand: projectType === 'backend' ? (startCommand.trim() || 'node dist/index.js') : undefined,
+				installCommand: installCommand.trim() || undefined,
+				secretFiles: secretFiles.length > 0 ? secretFiles.map(f => ({ name: f.name, content: f.content })) : undefined,
 				ownerId: user.uid
 			});
 			open = false;
@@ -648,6 +688,72 @@
 							{/if}
 						</div>
 						
+						<!-- Advanced Settings Toggle -->
+						<div class="pt-4 border-t border-gray-100">
+							<div class="bg-gray-50/50 rounded-xl border border-gray-200 overflow-hidden">
+								<div class="px-4 py-3 bg-gray-100/50 border-b border-gray-200 flex items-center justify-between">
+									<h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+										<Key class="w-3.5 h-3.5"/> Advanced Deployment Settings
+									</h4>
+								</div>
+								
+								<div class="p-4 space-y-6">
+									<!-- Custom Setup Command -->
+									<div class="space-y-2">
+										<label class="block text-sm font-medium text-gray-700">Custom Setup Command</label>
+										<Input 
+											placeholder="e.g. pip install yt-dlp" 
+											bind:value={installCommand} 
+											disabled={loading || overLimit} 
+										/>
+										<p class="text-[10px] text-gray-500 italic">This command runs on your server BEFORE bun install. Use it to install system tools.</p>
+									</div>
+
+									<!-- Secret Files Upload -->
+									<div class="space-y-3">
+										<div class="flex items-center justify-between">
+											<label class="block text-sm font-medium text-gray-700">Secret Files (Git-Ignored)</label>
+											<span class="text-[10px] text-gray-400 font-medium">{secretFiles.length} files added</span>
+										</div>
+										
+										<div class="flex items-center justify-center w-full">
+											<label class="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-50 transition-colors">
+												<div class="flex flex-col items-center justify-center pt-5 pb-6">
+													<Upload class="w-6 h-6 mb-2 text-gray-400" />
+													<p class="text-xs text-gray-500"><span class="font-semibold underline">Click to upload</span> or drag and drop</p>
+													<p class="text-[10px] text-gray-400 mt-1">.env, cookies.txt, service-account.json, etc.</p>
+												</div>
+												<input type="file" class="hidden" multiple onchange={handleFileUpload} />
+											</label>
+										</div>
+
+										{#if secretFiles.length > 0}
+											<div class="space-y-2 max-h-40 overflow-y-auto pr-1">
+												{#each secretFiles as file}
+													<div class="flex items-center justify-between p-2 bg-blue-50/50 border border-blue-100 rounded-lg group">
+														<div class="flex items-center gap-2 overflow-hidden">
+															<FileCode class="w-4 h-4 text-blue-500 shrink-0" />
+															<div class="flex flex-col min-w-0">
+																<span class="text-xs font-bold text-gray-900 truncate">{file.name}</span>
+																<span class="text-[10px] text-gray-500">{(file.size / 1024).toFixed(1)} KB</span>
+															</div>
+														</div>
+														<button 
+															type="button" 
+															onclick={() => removeSecretFile(file.name)}
+															class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all opacity-0 group-hover:opacity-100"
+														>
+															<Trash2 class="w-3.5 h-3.5" />
+														</button>
+													</div>
+												{/each}
+											</div>
+										{/if}
+									</div>
+								</div>
+							</div>
+						</div>
+
 						<!-- Env vars hint -->
 						{#if detectedEnvKeys.length > 0}
 							<div class="bg-blue-50 border border-blue-100 rounded-lg p-3">
