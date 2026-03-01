@@ -20,6 +20,20 @@ async function boot() {
   // This physically locks the daemon into the `firestore.rules` sandbox.
   const SYNC_USER_ID = await authenticateDaemon();
 
+  // Clear any existing error state on boot
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
+    await updateDoc(doc(db, 'daemon', SYNC_USER_ID), {
+      action: null,
+      updateStatus: 'idle',
+      updateError: null,
+      version: pkg.version
+    });
+    console.log(`✅ Boot: Version synced (v${pkg.version}) and error states cleared.`);
+  } catch (err) {
+    console.warn(`⚠️ Failed to sync initial state:`, err);
+  }
+
   // Fetch Droplet IP once on boot
   let dropletIp = '';
   try {
