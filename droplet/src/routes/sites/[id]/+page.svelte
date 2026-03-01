@@ -49,6 +49,7 @@
 	let editInstallCommand = $state('');
 	let editSecretFiles = $state<Array<{ name: string, content: string, size?: number }>>([]);
 	let editSiteType = $state<'static' | 'backend'>('static');
+	let editingAdvanced = $state(false);
 	let saving = $state(false);
 
 	// Delete state
@@ -1100,60 +1101,7 @@
 						<Input label="Start command" placeholder="node build/index.js" bind:value={editStartCommand} />
 					{/if}
 
-					<!-- Advanced Deployment Settings in Edit Mode -->
-					<div class="pt-4 border-t border-gray-100">
-						<h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-							<Key class="w-3.5 h-3.5"/> Advanced Deployment Settings
-						</h4>
-						
-						<div class="space-y-4">
-							<Input 
-								label="Custom Setup Command"
-								placeholder="e.g. pip install yt-dlp" 
-								bind:value={editInstallCommand} 
-							/>
-							<p class="text-[10px] text-gray-500 italic -mt-1">This command runs on your server BEFORE bun install.</p>
-
-							<div class="space-y-2">
-								<div class="flex items-center justify-between">
-									<label class="block text-xs font-semibold text-gray-700">Secret Files (Git-Ignored)</label>
-									<span class="text-[10px] text-gray-400 font-medium">{editSecretFiles.length} files</span>
-								</div>
-								
-								<div class="flex items-center justify-center w-full">
-									<label class="flex flex-col items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-50 transition-colors">
-										<div class="flex flex-col items-center justify-center pt-2 pb-3">
-											<Upload class="w-5 h-5 mb-1 text-gray-400" />
-											<p class="text-[11px] text-gray-500 text-center"><span class="font-semibold underline">Upload secrets</span> or drag/drop</p>
-										</div>
-										<input type="file" class="hidden" multiple onchange={handleSecretFileUpload} />
-									</label>
-								</div>
-
-								{#if editSecretFiles.length > 0}
-									<div class="mt-2 space-y-1.5 max-h-32 overflow-y-auto pr-1">
-										{#each editSecretFiles as file}
-											<div class="flex items-center justify-between p-1.5 bg-gray-50 border border-gray-200 rounded-lg group">
-												<div class="flex items-center gap-2 overflow-hidden">
-													<ShieldCheck class="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-													<span class="text-[11px] font-medium text-gray-900 truncate">{file.name}</span>
-												</div>
-												<button 
-													type="button" 
-													onclick={() => removeSecretFile(file.name)}
-													class="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
-												>
-													<X class="w-3 h-3" />
-												</button>
-											</div>
-										{/each}
-									</div>
-								{/if}
-							</div>
-						</div>
-					</div>
-
-					<div class="flex gap-2 pt-4">
+					<div class="flex gap-2 pt-2">
 						<Button onclick={saveEdits} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
 						<Button variant="outline" onclick={() => editing = false}>Cancel</Button>
 					</div>
@@ -1174,32 +1122,6 @@
 					{:else}
 						<div class="flex justify-between"><dt class="text-gray-500">Output dir</dt><dd class="text-gray-900 font-mono text-xs">{site.outputDir}</dd></div>
 					{/if}
-					
-					<!-- Read-only view for Advanced Settings -->
-					<div class="pt-4 border-t border-gray-100 mt-2">
-						<div class="grid grid-cols-1 gap-y-3">
-							<div class="flex justify-between">
-								<dt class="text-gray-500">Custom Setup</dt>
-								<dd class="text-gray-900 font-mono text-xs">{site.installCommand || '—'}</dd>
-							</div>
-							<div class="flex justify-between">
-								<dt class="text-gray-500">Secret Files</dt>
-								<dd class="text-right">
-									{#if site.secretFiles && site.secretFiles.length > 0}
-										<div class="flex flex-wrap justify-end gap-1.5 mt-0.5">
-											{#each site.secretFiles as file}
-												<span class="inline-flex items-center gap-1 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600 border border-indigo-100">
-													<ShieldCheck class="w-2.5 h-2.5" /> {file.name}
-												</span>
-											{/each}
-										</div>
-									{:else}
-										<span class="text-gray-400 italic font-medium">None</span>
-									{/if}
-								</dd>
-							</div>
-						</div>
-					</div>
 				</dl>
 			{/if}
 		</Card>
@@ -1270,6 +1192,125 @@
 				</div>
 			</Card>
 		</div>
+
+		<!-- Advanced Deployment Settings Standalone Section -->
+		<Card class="p-5 mt-4">
+			<div class="flex items-center justify-between mb-4">
+				<div class="flex items-center gap-2 font-semibold text-gray-900 text-sm">
+					<Key class="h-4 w-4 text-gray-500" />
+					<h3>Advanced Deployment Settings</h3>
+				</div>
+				{#if !editingAdvanced}
+					<Button variant="outline" size="sm" onclick={() => {
+						editInstallCommand = site.installCommand || '';
+						editSecretFiles = site.secretFiles ? site.secretFiles.map(f => ({ ...f, size: f.content.length })) : [];
+						editingAdvanced = true;
+					}}>
+						<Settings class="h-3.5 w-3.5 mr-1" />Manage
+					</Button>
+				{/if}
+			</div>
+
+			{#if editingAdvanced}
+				<div class="space-y-6 max-w-lg">
+					<div class="space-y-2">
+						<label class="block text-xs font-semibold text-gray-700">Custom Setup Command</label>
+						<Input 
+							placeholder="e.g. pip install yt-dlp" 
+							bind:value={editInstallCommand} 
+						/>
+						<p class="text-[10px] text-gray-500 italic">This command runs on your server BEFORE bun install.</p>
+					</div>
+
+					<div class="space-y-3">
+						<div class="flex items-center justify-between">
+							<label class="block text-xs font-semibold text-gray-700">Secret Files (Git-Ignored)</label>
+							<span class="text-[10px] text-gray-400 font-medium">{editSecretFiles.length} files added</span>
+						</div>
+						
+						<div class="flex items-center justify-center w-full">
+							<label class="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-50 transition-colors">
+								<div class="flex flex-col items-center justify-center pt-5 pb-6">
+									<Upload class="w-6 h-6 mb-2 text-gray-400" />
+									<p class="text-xs text-gray-500"><span class="font-semibold underline">Click to upload</span> or drag and drop</p>
+									<p class="text-[10px] text-gray-400 mt-1">.env, cookies.txt, service-account.json, etc.</p>
+								</div>
+								<input type="file" class="hidden" multiple onchange={handleSecretFileUpload} />
+							</label>
+						</div>
+
+						{#if editSecretFiles.length > 0}
+							<div class="space-y-2 max-h-40 overflow-y-auto pr-1">
+								{#each editSecretFiles as file}
+									<div class="flex items-center justify-between p-2 bg-blue-50/50 border border-blue-100 rounded-lg group">
+										<div class="flex items-center gap-2 overflow-hidden">
+											<ShieldCheck class="w-4 h-4 text-blue-500 shrink-0" />
+											<div class="flex flex-col min-w-0">
+												<span class="text-xs font-bold text-gray-900 truncate">{file.name}</span>
+												{#if file.size}<span class="text-[10px] text-gray-500">{(file.size / 1024).toFixed(1)} KB</span>{/if}
+											</div>
+										</div>
+										<button 
+											type="button" 
+											onclick={() => removeSecretFile(file.name)}
+											class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"
+										>
+											<X class="w-3.5 h-3.5" />
+										</button>
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+
+					<div class="flex gap-2 pt-2">
+						<Button onclick={async () => {
+							saving = true;
+							try {
+								await updateSite(site!.id, {
+									installCommand: editInstallCommand.trim() || undefined,
+									secretFiles: editSecretFiles.length > 0 ? editSecretFiles.map(f => ({ name: f.name, content: f.content })) : undefined
+								});
+								site = {
+									...site!,
+									installCommand: editInstallCommand.trim() || undefined,
+									secretFiles: editSecretFiles.length > 0 ? editSecretFiles.map(f => ({ name: f.name, content: f.content })) : []
+								};
+								editingAdvanced = false;
+							} catch (err) {
+								console.error('Failed to update advanced settings:', err);
+							} finally {
+								saving = false;
+							}
+						}} disabled={saving}>{saving ? 'Saving...' : 'Save Settings'}</Button>
+						<Button variant="outline" onclick={() => editingAdvanced = false}>Cancel</Button>
+					</div>
+				</div>
+			{:else}
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+					<div>
+						<h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Custom Setup Command</h4>
+						<code class="text-xs font-mono bg-gray-50 border border-gray-100 px-2 py-1.5 rounded block text-gray-700">
+							{site.installCommand || 'No custom setup command configured.'}
+						</code>
+					</div>
+					<div>
+						<h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Secret Files</h4>
+						{#if site.secretFiles && site.secretFiles.length > 0}
+							<div class="flex flex-wrap gap-2">
+								{#each site.secretFiles as file}
+									<span class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 border border-indigo-100 shadow-sm">
+										<ShieldCheck class="w-3.5 h-3.5" /> {file.name}
+									</span>
+								{/each}
+							</div>
+						{:else}
+							<p class="text-xs text-gray-500 italic">No secret files uploaded.</p>
+						{/if}
+					</div>
+				</div>
+			{/if}
+		</Card>
 
 		<!-- Danger zone -->
 		<Card class="p-5 mt-4 border-red-200">
