@@ -208,11 +208,11 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
       }
 
       try {
-        await execAsync(`cd ${appDir} && docker compose down`);
+        await execAsync(`cd ${appDir} && docker-compose down`);
       } catch (e) {}
 
       await log('Building and starting Docker containers (logs stream to UI)...', 1, 'Starting Docker');
-      await execStream(`cd ${appDir} && PORT=${port} docker compose up -d --build`, { timeout: 600000 });
+      await execStream(`cd ${appDir} && PORT=${port} docker-compose up -d --build`, { timeout: 600000 });
       await log('Docker containers deployed and running successfully!');
 
       await log('Configuring Nginx reverse proxy...', 1, 'Configuring Nginx');
@@ -551,7 +551,7 @@ export async function cleanupSite(site: { id: string; domain: string; siteType: 
       log(`Stopping processes for ${cleanDomain}...`);
       if (site.engine === 'docker') {
         try {
-          await execAsync(`cd ${appDir} && docker compose down`);
+          await execAsync(`cd ${appDir} && docker-compose down`);
           log(`  ✓ Docker containers stopped and removed`);
         } catch (e) {
           log(`  ⚠ Docker containers not found or already stopped`);
