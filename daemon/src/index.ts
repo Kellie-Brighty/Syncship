@@ -101,7 +101,8 @@ async function boot() {
           updateStatus: 'pulling' 
         });
 
-        console.log('📥 Pulling latest code...');
+        console.log('📥 Discarding local changes and pulling latest code...');
+        await execAsync('git -C .. reset --hard HEAD && git -C .. clean -fd');
         await execAsync('git -C .. pull');
         
         await updateDoc(snap.ref, { updateStatus: 'installing' });
