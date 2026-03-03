@@ -13,7 +13,7 @@
 	import { doc, onSnapshot, updateDoc, setDoc } from 'firebase/firestore';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 
-	const LATEST_DAEMON_VERSION = '0.1.1'; // Hardcoded for now
+	const LATEST_DAEMON_VERSION = '0.1.2'; // Hardcoded for now
 
 	let sites = $state<Site[]>([]);
 	let deployments = $state<Deployment[]>([]);
