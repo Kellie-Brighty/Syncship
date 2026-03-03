@@ -22,7 +22,7 @@
 	let domain = $state('');
 	let repo = $state('');
 	let branch = $state('main');
-	let projectType = $state<'static' | 'build' | 'backend'>('static');
+	let projectType = $state<'static' | 'build' | 'backend' | 'docker'>('static');
 	let engine = $state<'standard' | 'docker'>('standard');
 	let buildCommand = $state('npm run build');
 	let outputDir = $state('.');
@@ -270,7 +270,7 @@
 		const app = monorepoApps.find(a => a.path === selectedAppPath);
 		if (app) {
 			console.log('Selected app from monorepo:', app);
-			projectType = app.projectType as 'static' | 'build' | 'backend';
+			projectType = app.projectType as 'static' | 'build' | 'backend' | 'docker';
 			buildCommand = app.buildCommand || '';
 			outputDir = app.outputDir || '.';
 			startCommand = app.startCommand || '';
@@ -701,6 +701,17 @@
 								>
 									<span class="font-medium block text-center sm:text-left">Server / API</span>
 								</button>
+								<button
+									type="button"
+									onclick={() => handleProjectTypeChange('docker')}
+									disabled={loading || overLimit}
+									class="rounded-lg border px-3 py-2.5 text-left text-sm transition-colors cursor-pointer disabled:opacity-50
+										{projectType === 'docker'
+											? 'border-gray-900 bg-gray-50 text-gray-900 ring-1 ring-gray-900'
+											: 'border-gray-200 text-gray-500 hover:border-gray-300'}"
+								>
+									<span class="font-medium block text-center sm:text-left flex items-center gap-1.5"><svg class="w-4 h-4 text-[#2496ed]" viewBox="0 0 24 24" fill="currentColor"><path d="M13.983 11.078h2.119a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.119a.185.185 0 00-.185.185v1.888c0 .102.083.185.185.185m-2.95 0h2.119a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.119a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m-2.94 0h2.12a.186.186 0 00.185-.185V9.006a.186.186 0 00-.185-.186h-2.12a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m-2.953 0h2.12a.186.186 0 00.185-.185V9.006a.185.185 0 00-.185-.186h-2.12a.186.186 0 00-.186.185v1.888c0 .102.083.185.186.185m-2.941 0h2.119a.186.186 0 00.185-.185V9.006a.186.186 0 00-.185-.186h-2.119a.186.186 0 00-.185.185v1.888c0 .102.082.185.185.185m11.832-2.941h2.119a.186.186 0 00.186-.186V6.063a.186.186 0 00-.186-.186h-2.119a.186.186 0 00-.185.186v1.888c0 .102.082.186.185.186m-2.95 0h2.12a.186.186 0 00.185-.186V6.063a.186.186 0 00-.185-.186h-2.12a.185.185 0 00-.185.186v1.888c0 .102.082.186.185.186m-2.94 0h2.119a.186.186 0 00.185-.186V6.063a.185.185 0 00-.185-.186h-2.119a.185.185 0 00-.185.186v1.888c0 .102.082.186.185.186m-2.953 0h2.12a.186.186 0 00.185-.186V6.063a.185.185 0 00-.185-.186h-2.12a.186.186 0 00-.186.186v1.888c0 .102.083.186.186.186m-2.941 0h2.119a.186.186 0 00.185-.186V6.063a.186.186 0 00-.185-.186h-2.119a.186.186 0 00-.185.186v1.888c0 .102.082.186.185.186m11.832-2.94h2.119a.186.186 0 00.186-.185V3.12a.186.186 0 00-.186-.185h-2.119a.186.186 0 00-.185.185v1.888c0 .102.082.185.185.185m-2.95 0h2.12a.186.186 0 00.185-.185V3.12a.186.186 0 00-.185-.185h-2.12a.186.186 0 00-.185.185v1.888c0 .102.082.185.185.185m-2.94 0h2.119a.186.186 0 00.185-.185V3.12a.185.185 0 00-.185-.185h-2.119a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m-5.893 11.53c-.524-.037-1.018-.11-1.488-.234-.516-.14-1.01-.334-1.488-.588-1.523-.815-2.607-2.185-3.033-3.856-.051-.2-.102-.401-.13-.605-.015-.102-.027-.205-.027-.308a.63.63 0 01.62-.63.63.63 0 01.63.63c.026.155.05.309.083.456.368 1.408 1.282 2.562 2.554 3.25.433.24.896.42 1.385.547.433.111.883.178 1.341.205s.915.027 1.378-.007c.46-.026.915-.095 1.365-.197.45-.103.882-.254 1.298-.445.416-.185.815-.41 1.183-.68.368-.266.708-.574 1.018-.916.31-.341.59-.724.831-1.127.241-.41.445-.85.61-1.312a8.682 8.682 0 00.32-1.42 8.7 8.7 0 00.08-.85.184.184 0 01.184-.13h3.58c.204 0 .341.218.239.387-1.157 1.914-2.825 3.42-4.8 4.316-1.554.708-3.235 1.03-4.93 1.03-1.002 0-2-.123-2.984-.36zM5.938 10.147c-.531 0-.96.43-.96.96s.43.96.96.96.96-.43.96-.96-.43-.96-.96-.96zm-2.52 0c-.531 0-.96.43-.96.96s.43.96.96.96.96-.43.96-.96-.43-.96-.96-.96z"/></svg> Docker</span>
+								</button>
 							</div>
 						</div>
 
@@ -708,7 +719,7 @@
 						<div class="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-4">
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								<Input label="Branch" placeholder="main" bind:value={branch} disabled={loading || overLimit} />
-								{#if projectType !== 'backend'}
+								{#if projectType !== 'backend' && projectType !== 'docker'}
 									<Input label="Output Directory" placeholder={projectType === 'static' ? '.' : 'dist'} bind:value={outputDir} disabled={loading || overLimit} />
 								{/if}
 							</div>
