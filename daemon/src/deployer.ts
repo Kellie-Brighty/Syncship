@@ -29,6 +29,7 @@ interface SiteConfig {
   abortSignal?: AbortSignal;
   onLog?: (logLine: string, fullLog: string) => Promise<void> | void;
   onPortAssigned?: (port: number) => Promise<void> | void;
+  engine?: 'standard' | 'docker';
 }
 
 /**
@@ -185,120 +186,155 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
       await execStream(`cd ${repoDir} && ${site.installCommand}`, { timeout: 300000 });
     }
 
-    // 3. Build if needed (framework projects)
-    if (site.buildCommand) {
+    if (site.engine === 'docker') {
       if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
 
-      if (existsSync(resolve(repoDir, 'package.json'))) {
-        await log(`Installing dependencies...`, 1, 'Installing dependencies');
-        const hasYarnLock = existsSync(resolve(repoDir, 'yarn.lock'));
-        const hasPnpmLock = existsSync(resolve(repoDir, 'pnpm-lock.yaml'));
-        const installCmd = hasPnpmLock ? 'pnpm install' : hasYarnLock ? 'yarn install' : 'npm install';
-        await execStream(`cd ${repoDir} && ${installCmd}`, { timeout: 300000 });
-      } else {
-        await log(`No package.json found in root. Skipping auto-install...`, 1, 'Preparing build');
-      }
-
-      await log(`Running build: ${site.buildCommand}`, 1, 'Building project');
-      await execStream(`cd ${repoDir} && ${site.buildCommand}`, { timeout: 300000 });
-      await log('Build complete');
-    } else {
-      await log('No build command specified, skipping build', 2, 'Skipping build');
-    }
-
-    // 4. Copy output to web root
-    if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
-    let sourceDir = resolve(repoDir, site.outputDir || '.');
-
-    if ((!site.outputDir || site.outputDir === '.') && !existsSync(resolve(repoDir, 'index.html'))) {
-      const fallbacks = ['dist', 'build', 'out', 'public'];
-      for (const override of fallbacks) {
-        const potentialDir = resolve(repoDir, override);
-        if (existsSync(potentialDir) && existsSync(resolve(potentialDir, 'index.html'))) {
-          sourceDir = potentialDir;
-          await log(`No index.html found in root. Auto-detected '${override}' folder as build output.`, 0, 'Deploying files');
-          break;
-        }
-      }
-    }
-
-    if (!existsSync(sourceDir)) {
-      throw new Error(`Output directory '${site.outputDir}' not found and no common build folders detected.`);
-    }
-
-    mkdirSync(siteDir, { recursive: true });
-    await execStream(`rsync -a --delete ${sourceDir}/ ${siteDir}/`);
-    
-    // Fix permissions: Nginx (www-data) needs to read these files
-    try {
-      await execStream(`chown -R www-data:www-data ${siteDir}`);
-      await execStream(`chmod -R 755 ${siteDir}`);
-      await log('Permissions updated for Nginx');
-    } catch (permErr: any) {
-      await log(`Warning: Could not set permissions: ${permErr.message}`);
-    }
-
-    await log(`Files deployed to ${siteDir}`, 1, 'Deploying files');
-
-    // 5. Configure Nginx + optionally start PM2 process
-    if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
-
-    if (site.siteType === 'backend') {
-      // ── Backend deploy: PM2 + reverse proxy ──
       const appDir = resolve(APPS_DIR, cleanDomain);
       mkdirSync(appDir, { recursive: true });
       await execStream(`rsync -a --delete ${repoDir}/ ${appDir}/`);
-      await log(`App files synced to ${appDir}`);
-
-      // Install deps in app dir if package.json exists
-      if (existsSync(resolve(appDir, 'package.json'))) {
-        await log('Installing production dependencies in app dir...');
-        const hasYarnLock = existsSync(resolve(appDir, 'yarn.lock'));
-        const hasPnpmLock = existsSync(resolve(appDir, 'pnpm-lock.yaml'));
-        const installCmd = hasPnpmLock ? 'pnpm install' : hasYarnLock ? 'yarn install' : 'npm install';
-        await execStream(`cd ${appDir} && ${installCmd}`, { timeout: 300000 });
-      }
-
-      if (site.envVars) {
-        writeFileSync(resolve(appDir, '.env'), site.envVars);
-      }
-
-      // Re-inject secret files into the app directory
+      
+      if (site.envVars) writeFileSync(resolve(appDir, '.env'), site.envVars);
       if (site.secretFiles && site.secretFiles.length > 0) {
         for (const file of site.secretFiles) {
           const safeName = resolve(appDir, file.name);
-          if (safeName.startsWith(appDir)) {
-            writeFileSync(safeName, file.content);
-          }
+          if (safeName.startsWith(appDir)) writeFileSync(safeName, file.content);
         }
       }
 
-      // Allocate or reuse port
       const port = site.port || await allocatePort();
-      await log(`Assigned port: ${port}`);
-
-      // Notify caller of the assigned port so it can be saved
+      await log(`Assigned Host Port: ${port}`);
       if (site.onPortAssigned) {
         await site.onPortAssigned(port);
       }
 
-      // Stop existing PM2 process if running
-      await stopBackendProcess(cleanDomain);
+      try {
+        await execAsync(`cd ${appDir} && docker compose down`);
+      } catch (e) {}
 
-      // Start the backend process with PM2
-      const startCmd = site.startCommand || 'node dist/index.js';
-      await startBackendProcess(cleanDomain, appDir, startCmd, port, site.envVars);
-      await log(`🚀 Backend process started on port ${port}`, 1, 'Starting backend');
+      await log('Building and starting Docker containers (logs stream to UI)...', 1, 'Starting Docker');
+      await execStream(`cd ${appDir} && PORT=${port} docker compose up -d --build`, { timeout: 600000 });
+      await log('Docker containers deployed and running successfully!');
 
-      // Configure Nginx as reverse proxy
       await log('Configuring Nginx reverse proxy...', 1, 'Configuring Nginx');
       const nginxConfig = generateReverseProxyNginxConfig(cleanDomain, port);
       writeFileSync(`/etc/nginx/sites-available/${cleanDomain}`, nginxConfig);
+
     } else {
-      // ── Static deploy: serve files directly ──
-      await log('Configuring Nginx...', 1, 'Configuring Nginx');
-      const nginxConfig = generateNginxConfig(cleanDomain, siteDir);
-      writeFileSync(`/etc/nginx/sites-available/${cleanDomain}`, nginxConfig);
+      // 3. Build if needed (framework projects)
+      if (site.buildCommand) {
+        if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
+
+        if (existsSync(resolve(repoDir, 'package.json'))) {
+          await log(`Installing dependencies...`, 1, 'Installing dependencies');
+          const hasYarnLock = existsSync(resolve(repoDir, 'yarn.lock'));
+          const hasPnpmLock = existsSync(resolve(repoDir, 'pnpm-lock.yaml'));
+          const installCmd = hasPnpmLock ? 'pnpm install' : hasYarnLock ? 'yarn install' : 'npm install';
+          await execStream(`cd ${repoDir} && ${installCmd}`, { timeout: 300000 });
+        } else {
+          await log(`No package.json found in root. Skipping auto-install...`, 1, 'Preparing build');
+        }
+
+        await log(`Running build: ${site.buildCommand}`, 1, 'Building project');
+        await execStream(`cd ${repoDir} && ${site.buildCommand}`, { timeout: 300000 });
+        await log('Build complete');
+      } else {
+        await log('No build command specified, skipping build', 2, 'Skipping build');
+      }
+
+      // 4. Copy output to web root
+      if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
+      let sourceDir = resolve(repoDir, site.outputDir || '.');
+
+      if ((!site.outputDir || site.outputDir === '.') && !existsSync(resolve(repoDir, 'index.html'))) {
+        const fallbacks = ['dist', 'build', 'out', 'public'];
+        for (const override of fallbacks) {
+          const potentialDir = resolve(repoDir, override);
+          if (existsSync(potentialDir) && existsSync(resolve(potentialDir, 'index.html'))) {
+            sourceDir = potentialDir;
+            await log(`No index.html found in root. Auto-detected '${override}' folder as build output.`, 0, 'Deploying files');
+            break;
+          }
+        }
+      }
+
+      if (!existsSync(sourceDir)) {
+        throw new Error(`Output directory '${site.outputDir}' not found and no common build folders detected.`);
+      }
+
+      mkdirSync(siteDir, { recursive: true });
+      await execStream(`rsync -a --delete ${sourceDir}/ ${siteDir}/`);
+      
+      // Fix permissions: Nginx (www-data) needs to read these files
+      try {
+        await execStream(`chown -R www-data:www-data ${siteDir}`);
+        await execStream(`chmod -R 755 ${siteDir}`);
+        await log('Permissions updated for Nginx');
+      } catch (permErr: any) {
+        await log(`Warning: Could not set permissions: ${permErr.message}`);
+      }
+
+      await log(`Files deployed to ${siteDir}`, 1, 'Deploying files');
+
+      // 5. Configure Nginx + optionally start PM2 process
+      if (site.abortSignal?.aborted) throw new Error('Deployment canceled');
+
+      if (site.siteType === 'backend') {
+        // ── Backend deploy: PM2 + reverse proxy ──
+        const appDir = resolve(APPS_DIR, cleanDomain);
+        mkdirSync(appDir, { recursive: true });
+        await execStream(`rsync -a --delete ${repoDir}/ ${appDir}/`);
+        await log(`App files synced to ${appDir}`);
+
+        // Install deps in app dir if package.json exists
+        if (existsSync(resolve(appDir, 'package.json'))) {
+          await log('Installing production dependencies in app dir...');
+          const hasYarnLock = existsSync(resolve(appDir, 'yarn.lock'));
+          const hasPnpmLock = existsSync(resolve(appDir, 'pnpm-lock.yaml'));
+          const installCmd = hasPnpmLock ? 'pnpm install' : hasYarnLock ? 'yarn install' : 'npm install';
+          await execStream(`cd ${appDir} && ${installCmd}`, { timeout: 300000 });
+        }
+
+        if (site.envVars) {
+          writeFileSync(resolve(appDir, '.env'), site.envVars);
+        }
+
+        // Re-inject secret files into the app directory
+        if (site.secretFiles && site.secretFiles.length > 0) {
+          for (const file of site.secretFiles) {
+            const safeName = resolve(appDir, file.name);
+            if (safeName.startsWith(appDir)) {
+              writeFileSync(safeName, file.content);
+            }
+          }
+        }
+
+        // Allocate or reuse port
+        const port = site.port || await allocatePort();
+        await log(`Assigned port: ${port}`);
+
+        // Notify caller of the assigned port so it can be saved
+        if (site.onPortAssigned) {
+          await site.onPortAssigned(port);
+        }
+
+        // Stop existing PM2 process if running
+        await stopBackendProcess(cleanDomain);
+
+        // Start the backend process with PM2
+        const startCmd = site.startCommand || 'node dist/index.js';
+        await startBackendProcess(cleanDomain, appDir, startCmd, port, site.envVars);
+        await log(`🚀 Backend process started on port ${port}`, 1, 'Starting backend');
+
+        // Configure Nginx as reverse proxy
+        await log('Configuring Nginx reverse proxy...', 1, 'Configuring Nginx');
+        const nginxConfig = generateReverseProxyNginxConfig(cleanDomain, port);
+        writeFileSync(`/etc/nginx/sites-available/${cleanDomain}`, nginxConfig);
+      } else {
+        // ── Static deploy: serve files directly ──
+        await log('Configuring Nginx...', 1, 'Configuring Nginx');
+        const nginxConfig = generateNginxConfig(cleanDomain, siteDir);
+        writeFileSync(`/etc/nginx/sites-available/${cleanDomain}`, nginxConfig);
+      }
     }
 
     // Enable site (symlink)
@@ -493,7 +529,7 @@ async function startBackendProcess(
 /**
  * Clean up a site: stop PM2, remove directories, remove Nginx config
  */
-export async function cleanupSite(site: { id: string; domain: string; siteType: string }): Promise<{ success: boolean; log: string }> {
+export async function cleanupSite(site: { id: string; domain: string; siteType: string; engine?: string }): Promise<{ success: boolean; log: string }> {
   const logs: string[] = [];
   const log = (msg: string) => {
     console.log(`[CLEANUP] ${msg}`);
@@ -511,13 +547,22 @@ export async function cleanupSite(site: { id: string; domain: string; siteType: 
     log(`Starting cleanup for ${cleanDomain}...`);
 
     // 1. Stop and delete PM2 process if backend
-    if (site.siteType === 'backend') {
-      log(`Stopping PM2 process ${cleanDomain}...`);
-      try {
-        await execAsync(`pm2 delete ${cleanDomain}`);
-        log(`  ✓ PM2 process deleted`);
-      } catch (e) {
-        log(`  ⚠ PM2 process not found or already deleted`);
+    if (site.siteType === 'backend' || site.engine === 'docker') {
+      log(`Stopping processes for ${cleanDomain}...`);
+      if (site.engine === 'docker') {
+        try {
+          await execAsync(`cd ${appDir} && docker compose down`);
+          log(`  ✓ Docker containers stopped and removed`);
+        } catch (e) {
+          log(`  ⚠ Docker containers not found or already stopped`);
+        }
+      } else {
+        try {
+          await execAsync(`pm2 delete ${cleanDomain}`);
+          log(`  ✓ PM2 process deleted`);
+        } catch (e) {
+          log(`  ⚠ PM2 process not found or already deleted`);
+        }
       }
     }
 
@@ -528,7 +573,7 @@ export async function cleanupSite(site: { id: string; domain: string; siteType: 
     log(`Removing deployment directory: ${siteDir}...`);
     await execAsync(`rm -rf ${siteDir}`);
 
-    if (site.siteType === 'backend') {
+    if (site.siteType === 'backend' || site.engine === 'docker') {
       log(`Removing app directory: ${appDir}...`);
       await execAsync(`rm -rf ${appDir}`);
     }

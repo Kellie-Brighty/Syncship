@@ -209,6 +209,7 @@ async function boot() {
             installCommand: site.installCommand,
             secretFiles: site.secretFiles,
             abortSignal: abortController.signal,
+            engine: site.engine,
             onPortAssigned: async (port) => {
               // Save the assigned port back to Firestore so it persists across redeploys
               await updateDoc(doc(db, 'sites', data.siteId), { port });
@@ -286,7 +287,8 @@ async function boot() {
           const result = await cleanupSite({
             id: docSnapshot.id,
             domain: site.domain,
-            siteType: site.siteType
+            siteType: site.siteType,
+            engine: site.engine
           });
 
           if (result.success) {
