@@ -1,6 +1,6 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import cliProgress from 'cli-progress';
 import dns from 'dns';
@@ -205,6 +205,21 @@ export async function deploySite(site: SiteConfig): Promise<{ success: boolean; 
       await log(`Assigned Host Port: ${port}`);
       if (site.onPortAssigned) {
         await site.onPortAssigned(port);
+      }
+
+      // Automatically overwrite the host port in docker-compose.yml to match SyncShip's allocated port.
+      // This looks for standard port mappings like "8080:8080" or "3000:80" and forces the left side to `${port}`.
+      const composeFile = resolve(appDir, 'docker-compose.yml');
+      const composeYamlFile = resolve(appDir, 'docker-compose.yaml');
+      const targetCompose = existsSync(composeFile) ? composeFile : (existsSync(composeYamlFile) ? composeYamlFile : null);
+      
+      if (targetCompose) {
+        let composeOutput = readFileSync(targetCompose, 'utf8');
+        // Replace ONLY the host port mapping (the first number in "HOST:CONTAINER") with the allocated $port variable
+        composeOutput = composeOutput.replace(/"(\d+):(\d+)"/g, `"\${PORT}:$2"`);
+        composeOutput = composeOutput.replace(/- (\d+):(\d+)/g, `- \${PORT}:$2`);
+        writeFileSync(targetCompose, composeOutput);
+        await log(`Mapped internal Docker ports to SyncShip Host Port (\${PORT})`);
       }
 
       try {
